@@ -1,5 +1,10 @@
 ;-*-arc-*-
 
+;chap 4
+
+(def mklist (x)
+  (if (alist x) x (list x)))
+
 (def prune (test tree)
   (if (no tree)         nil
       (acons:car tree)  (cons (prune test (car tree)) (prune test (cdr tree)))
@@ -153,12 +158,40 @@
 (def fn0ify (x)
   (if (isa x 'fn) (x) x))
 
+(def callif (x)
+  (if (isa x 'fn) (x) x))
+
+(def fn? (x)
+  (isa x 'fn))
+
 (def lrec (rec base)
   (afn (l)
      (if (no l)
          (fn0ify base)
          (rec (car l) (fn () (self:cdr l))))))
+
+;fig 5.8
  
+(def ttrav (rec (o base idfn))
+  (afn (tree)
+    (if (atom tree)
+	(if (fn? base)
+	    (base tree)
+	    base)
+	(rec (self:car tree)
+	     (when (cdr tree) (self:cdr tree))))))
+
+(def trec (rec (o base idfn))
+  (afn (tree)
+    (if (atom tree)
+	(if (fn? base)
+	    (base tree)
+	    base)
+	(rec tree
+	     (fn ()(self:car tree))
+	     (fn ()(when (cdr tree) (self:cdr tree)))))))
+    
+
 (= nodes* (table))
 
 ;chap 6
@@ -943,3 +976,20 @@
 	       (list (max mx it) (min mn it)))
 	     (list (car args) (car args))
 	     (cdr args))))
+;15.3
+
+;fig 15.5
+;is there something like symbol macros in arc?
+(mac atrec (rec (o base 'it))
+  (w/uniq (lfn rfn)
+    `(trec (fn (it ,lfn ,rfn)
+	     (withs (left (fn () (,lfn))
+		     right (fn () (,rfn)))
+	       ,rec))
+	   (fn (it) ,base))))
+
+(mac on-trees (rec base . trees)
+  `((atrec ,rec ,base) ,@trees))
+    
+;see ontree, treewise
+			

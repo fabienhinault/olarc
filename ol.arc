@@ -992,4 +992,25 @@
   `((atrec ,rec ,base) ,@trees))
     
 ;see ontree, treewise
-			
+
+(= unforced (uniq))
+
+(def delay-p (x)
+  (and (alist x) (is (car x) 'delay)))
+
+(mac delay (expr)
+  (w/uniq self
+    `(let ,self (list 'delay unforced nil)
+       (= (,self 2)
+	  (fn () (= (cadr ,self) ,expr)))
+       ,self)))
+
+(def force (x)
+  (if (delay-p x)
+      (if (is (cadr x) unforced)
+	  ((x 2))
+	  (cadr x))
+      x))
+      
+	  
+		       

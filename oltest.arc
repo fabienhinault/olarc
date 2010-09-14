@@ -14,6 +14,13 @@
 ;  t)
 
 (register-test '(suite "On Lisp Tests"
+  (suite "Chap 4"
+    (suite "fig 4.2"
+      ("group"
+       (group '(a b c d e f g) 2)
+       ((a b) (c d) (e f) (g)))
+      )
+    )
   (suite "Chap 5"
     (suite "fig 5.8  ttrav"
       ("flatten"
@@ -35,20 +42,46 @@
   (suite "Chap 15"
     (suite "fig 15.5"
       ("our-copy-tree"
-       (on-trees (cons left right) it  '((a b (c d) (e) f ())))
+       (on-trees (cons (left) (right)) it  '((a b (c d) (e) f ())))
        ((a b (c d) (e) f ())))
       ("count-leaves"
-       (on-trees (+ left (or right 1)) 1  '((a b (c d) (e) f ())))
-       ((a b (c d) (e) f ())))
+       (on-trees (+ (left) (or (right) 1)) 1  '((a b (c d) (e) f)))
+       10)
       ("flatten"
-       (on-trees (+ left right) (mklist it)  '((a b (c d) (e) f ())))
-       ((a b (c d) (e) f ())))
+       (on-trees (+ (left)(right)) (mklist it)  '((a b (c d) (e) f ())))
+       (a b c d e f))
       ("rfind-if"
        ((rfn rfind-if (f tree)
-	 (on-trees (or left right)
+	 (on-trees (or (left) (right))
 		   (and (f it) it)
-		   tree)
-	 odd '(2 (3 4) 5)))
+		   tree))
+	 odd '(2 (3 4) 5))
        3)
-      ))
+      )
+    (suite "fig 15.7"
+      ("lazy evaluation"
+       (force 'a)
+       a)
+      ("2"
+       (do
+	 (let x 2
+	   (= d (delay (+ 1 x))))
+	 (force d))
+       3)
+      )
+    )
+  (suite "Chap 16"
+    (suite "fig 16.1"
+      ("1"
+       (do
+	 (abbrev a and)
+	 (a nil nil))
+       nil)
+      ("2"
+       (do
+	 (abbrevs a and w with l let)
+	 (macex1 '(l)))
+       (let))
+      )
+    )
 ))

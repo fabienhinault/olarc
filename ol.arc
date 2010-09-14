@@ -1,9 +1,22 @@
 ;-*-arc-*-
 
 ;chap 4
-
+;fig 4.1
 (def mklist (x)
   (if (alist x) x (list x)))
+
+;fig 4.2
+(def group (source n)
+  (when (is 0 n)(error "zero length"))
+  (if (no source)
+      nil
+      ((afn (source acc)
+	(let rest (nthcdr n source)
+	  (if (acons rest)
+	      (self rest (cons (cut source 0 n) acc))
+	      (rev (cons source acc)))))
+       source nil)))
+
 
 (def prune (test tree)
   (if (no tree)         nil
@@ -980,6 +993,13 @@
 
 ;fig 15.5
 ;is there something like symbol macros in arc?
+
+;"Because macros are first-class objects, there is no need for Common 
+;Lisp's macrolet. You can give a macro local scope with let, just as 
+;you would give a value to any other variable."
+;http://www.paulgraham.com/arcll1.html
+
+
 (mac atrec (rec (o base 'it))
   (w/uniq (lfn rfn)
     `(trec (fn (it ,lfn ,rfn)
@@ -1011,6 +1031,15 @@
 	  ((x 2))
 	  (cadr x))
       x))
-      
-	  
-		       
+
+;chap 16
+;fig 16.1
+
+(mac abbrev (short long)
+  `(mac ,short args
+     `(,',long ,@args)))
+
+(mac abbrevs names
+  `(do
+     ,@(map (fn (pair) `(abbrev ,@pair))
+	    (group names 2))))

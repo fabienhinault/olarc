@@ -72,16 +72,19 @@
     )
   (suite "Chap 16"
     (suite "fig 16.1"
-      ("1"
-       (do
-	 (abbrev a and)
-	 (a nil nil))
+      ("abbrev"
+	 (zza nil nil)
        nil)
-      ("2"
+      ("abbrevs"
        (do
-	 (abbrevs a and w with l let)
-	 (macex1 '(l)))
+	 (abbrevs wwa and www with wwl let)
+	 (macex1 '(wwl)))
        (let))
+      )
+    (suite "fig 16.3 anaphoric macros"
+      ("a+"
+       (< (abs (- (mass-cost 7.95) 9.54)) 1.0e-10)
+       t)
       )
     )
 ))

@@ -1039,7 +1039,26 @@
   `(mac ,short args
      `(,',long ,@args)))
 
+(abbrev zza and)
+
 (mac abbrevs names
   `(do
      ,@(map (fn (pair) `(abbrev ,@pair))
 	    (group names 2))))
+
+;symbol properties in arc?
+
+(mac a+ args
+  (a+expand args nil))
+
+(def a+expand (args syms)
+  (if args
+      (w/uniq symbol
+	`(withs (,symbol ,(car args)
+		 it ,symbol)
+	   ,(a+expand (cdr args)
+		      (+ syms (list symbol)))))
+      `(+ ,@syms)))
+
+(def mass-cost (menu-price)
+  (a+ menu-price (* it .05) (* it 3)))

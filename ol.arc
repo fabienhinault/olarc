@@ -1062,3 +1062,63 @@
 
 (def mass-cost (menu-price)
   (a+ menu-price (* it .05) (* it 3)))
+
+(mac analist args
+  (alist-expand args nil))
+
+(def alist-expand (args syms)
+  (if args
+      (w/uniq symbol
+	`(withs (,symbol ,(car args)
+		 it ,symbol)
+	   ,(alist-expand (cdr args) 
+			  (+ syms (list symbol)))))
+      `(list ,@syms)))
+
+;fig 16.4
+(mac defanaph (name (o calls nil))
+  (let calls (or calls (pop-symbol name))
+    `(mac ,name args
+       (anaphex args (list ',calls)))))
+
+(def anaphex (args expr)
+  (if args
+      (w/uniq symb
+	`(withs (,symb ,(car args)
+		 it ,symb)
+	   ,(anaphex (cdr args)
+		     (+ expr (list symb)))))
+      expr))
+
+(def pop-symbol (symb)
+  (sym (cut (string symb) 1)))
+
+;no read macro in arc
+
+;chap 18 
+
+; fig 18.1
+
+(mac dbind (pat seq . body)
+  (w/uniq gseq
+    `(let ,gseq ,seq
+       (dbind-ex (destruct pat gseq atom) body))))
+
+(def destruc (pat seq (o atom? atom) (o n 0))
+  (if (no pat)
+      nil
+      (let rest (if (atom? pat) pat
+		    (is (car pat) '.) (cadr pat)
+		    nil)
+	(if rest
+	    `((,rest (subseq ,seq ,n)))
+	    (withs (p (car pat)
+		    rec (destruc (cdr pat) seq atom? (+ 1 n)))
+	      (if (atom? p)
+		  (cons '(,p (,seq ,n))
+			rec)
+		  (w/uniq var
+		    (cons (cons `(,var (elt ,seq ,n))
+				(destruc p var atom?))
+			  rec))))))))
+

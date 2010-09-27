@@ -85,6 +85,9 @@
       ("a+"
        (< (abs (- (mass-cost 7.95) 9.54)) 1.0e-10)
        t)
+      ("alist analist"
+       (analist 1 (+ 2 it) (+ 2 it))
+       (1 3 5))
       )
     )
 ))

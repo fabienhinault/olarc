@@ -1102,23 +1102,33 @@
 (mac dbind (pat seq . body)
   (w/uniq gseq
     `(let ,gseq ,seq
-       (dbind-ex (destruct pat gseq atom) body))))
+       ,(dbind-ex (destruc pat gseq atom) body))))
 
 (def destruc (pat seq (o atom? atom) (o n 0))
   (if (no pat)
       nil
-      (let rest (if (atom? pat) pat
-		    (is (car pat) '.) (cadr pat)
-		    nil)
-	(if rest
-	    `((,rest (subseq ,seq ,n)))
-	    (withs (p (car pat)
+      (if (atom? pat)
+	  `((,pat (cut ,seq ,n)))
+	  (withs (p (car pat)
 		    rec (destruc (cdr pat) seq atom? (+ 1 n)))
-	      (if (atom? p)
-		  (cons '(,p (,seq ,n))
-			rec)
-		  (w/uniq var
-		    (cons (cons `(,var (elt ,seq ,n))
-				(destruc p var atom?))
-			  rec))))))))
+	    (if (atom? p)
+		(cons `(,p (,seq ,n))
+		      rec)
+		(w/uniq var
+		  (cons (cons `(,var (,seq ,n))
+			      (destruc p var atom?))
+			rec)))))))
 
+(def dbind-ex (binds body)
+  (if (no binds)
+      `(do ,@body)
+      `(let ,(map (fn (b) 
+		    (if (acons (car b))
+			(car b)
+			b))
+		  binds)
+	 ,(dbind-ex (mappend (fn (b) 
+			       (if (acons (car b))
+				   (cdr b)))
+			     binds)
+		    body))))

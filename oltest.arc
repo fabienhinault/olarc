@@ -90,4 +90,21 @@
        (1 3 5))
       )
     )
+  (suite "Chap 18"
+    (suite "fig 18.1"
+      ("dbind"
+       (dbind (a (b . c) . d) '(1 "fribble" 2 3 4) (list a b c d))
+       (1 #\f "ribble" (2 3 4))
+       )
+      )
+;;     (suite "fig 18.4"
+;;       ("w/places"
+;;        (let l '(1 (2 3) 4)
+;; 	 (w/places (a (b . c) d) l
+;; 	     (= a 'uno)
+;; 	     (= c '(tre)))
+;; 	 l)
+;;        (uno (2 tre) 4))
+;;       )
+;;     )
 ))

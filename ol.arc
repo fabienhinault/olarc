@@ -1122,7 +1122,7 @@
 (def dbind-ex (binds body)
   (if (no binds)
       `(do ,@body)
-      `(let ,(map (fn (b) 
+      `(withs ,(mappend (fn (b) 
 		    (if (acons (car b))
 			(car b)
 			b))
@@ -1132,3 +1132,18 @@
 				   (cdr b)))
 			     binds)
 		    body))))
+
+;no array, matrix or structure in arc
+
+;; ;fig 18.4
+;; ;implement symbol macros ?
+
+;; (mac w/places (pat seq . body)
+;;   (w/uniq gseq
+;;     `(let ,gseq ,seq
+;;        (wplac-ex (binds body)))))
+
+;; (def wplac-ex (binds body)
+;;   (if (no binds)
+;;       `(do ,@body)
+;;       (

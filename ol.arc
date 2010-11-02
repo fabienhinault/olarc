@@ -1136,7 +1136,7 @@
 ;no array, matrix or structure in arc
 
 ;; ;fig 18.4
-;; ;implement symbol macros ?
+;; ;TODO: implement symbol macros
 
 ;; (mac w/places (pat seq . body)
 ;;   (w/uniq gseq
@@ -1147,3 +1147,120 @@
 ;;   (if (no binds)
 ;;       `(do ,@body)
 ;;       (
+
+;fig 18.5
+
+;convention: t means "matches with no binding"
+;see if annoying to have t in assoc list
+(def match (x y (o binds nil))
+  (aif
+    (or (is x y) (is x '_) (is y '_)) (or binds t)
+    (binding x binds) (match it y binds)
+    (binding y binds) (match x it binds)
+    (varsym? x) (cons (cons x y) binds)
+    (varsym? y) (cons (cons y x) binds)
+    (and (acons x)(acons y)(match (car x) (car y) binds))
+        (match (cdr x) (cdr y) it)
+     nil))
+
+(def varsym? (x)
+  (and x (isa x 'sym) (is ((stringify x) 0) #\?)))
+
+(def binding (x binds)
+  ((afn (x binds)
+    (aif (assoc x binds)
+	 (or (self (cdr it) binds)
+	     (cdr it))))
+   x binds))
+
+(mac if-match (pat seq then (o else nil))
+  `(aif (match ',pat ,seq)
+        (withs ,(mappend (fn (v) `(,v (binding ',v it)))
+                   (vars-in then atom))
+            ,then)
+        ,else))
+
+
+(def vars-in (expr (o atom? atom))
+  (if (atom? expr)
+      (if (var? expr)(list expr) nil)
+      (union is
+             (vars-in (car expr) atom?)
+             (vars-in (cdr expr) atom?))))
+
+(def var? (x)
+  (and x (isa x 'sym) (is ((stringify x) 0) #\?)))
+
+(def abab (seq)
+  (if-match (?x ?y ?x ?y) seq
+            (list ?x ?y)
+            nil))
+
+(mac if-match (pat seq then (o else nil))
+  `(withs ,(mappend (fn (v) `(,v ',(uniq)))
+                    (vars-in pat simple?))
+     (pat-match ,pat ,seq ,then ,else)))
+
+(mac pat-match (pat seq then else)
+  (if (simple? pat)
+      (match1 `((,pat ,seq)) then else)
+      (w/uniq (gseq gelse)
+        `(let ,gelse (fn () ,else)
+           ,(gen-match (cons (list gseq seq)
+                             (destruc pat gseq simple?))
+                       then
+                       `(,gelse))))))
+
+(def simple? (x)
+  (or (atom x) (is (car x) 'quote)))
+
+(def gen-match (refs then else)
+  (if (no refs)
+      then
+      (let then (gen-match (cdr refs) then else)
+        (if (simple? (caar refs))
+            (match1 refs then else)
+            (gen-match (car refs) then else)))))
+
+(def match1 (refs then else)
+  (let ((pat expr) . rest) refs
+    (if (uniq? pat)
+          `(let ,pat ,expr
+             (if (and (seq? ,pat)
+                      ,(length-test pat rest))
+                 ,then
+                 ,else))
+        (is pat'_) then
+        (var? pat)
+          (w/uniq ge
+            `(let ,ge ,expr
+               (if (or (uniq? ,pat) (is ,pat ,ge))
+                   (let ,pat ,ge ,then)
+                   ,else)))
+          `(if (is ,pat ,expr) ,then ,else))))
+
+(def seq? (x)
+  (or (alist x) (isa x 'table) (isa x 'string)))
+
+(def uniq? (s)
+  (and (isa s 'sym) (no (is s (sym (string s))))))
+
+(def cdar (x)
+  (cdr:car x))
+
+(def length-test (pat rest)
+  (let fin (caar:cdr:last rest)
+    (if (acons fin)
+        `(is (len ,pat) ,(len rest))
+        `(> (len ,pat) ,(- (len rest) 2)))))
+
+(def prf (f name)
+  (fn args 
+    (let res nil
+      (prn name args)
+      (= res (apply f args))
+      (prn name " <-- " res)
+      res)))
+
+(mac prfn (f)
+  `(= ,f (prf ,f ',f)))

@@ -94,17 +94,18 @@
     (suite "fig 18.1"
       ("dbind"
        (dbind (a (b . c) . d) '(1 "fribble" 2 3 4) (list a b c d))
-       (1 #\f "ribble" (2 3 4))
-       )
-      )
-;;     (suite "fig 18.4"
-;;       ("w/places"
-;;        (let l '(1 (2 3) 4)
-;; 	 (w/places (a (b . c) d) l
-;; 	     (= a 'uno)
-;; 	     (= c '(tre)))
-;; 	 l)
-;;        (uno (2 tre) 4))
-;;       )
-;;     )
-))
+       (1 #\f "ribble" (2 3 4))))
+    (suite "fig 18.7"
+      ("efficient if-match"
+       (if-match (?x (1 . ?y) . ?x) '((a b) (1 2 3) a b)
+               (list ?x ?y))
+       ((a b) (2 3)))
+      ("abab list"
+       (abab '(hi ho hi ho))
+       (hi ho))
+      ("abab string"
+       (abab "abab")
+       (#\a #\b)))
+    )
+;2 closing parentheses after the chapter suites
+)) ;(register-test '(suite "On Lisp Tests"

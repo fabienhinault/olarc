@@ -1191,11 +1191,6 @@
 (def var? (x)
   (and x (isa x 'sym) (is ((stringify x) 0) #\?)))
 
-(def abab (seq)
-  (if-match (?x ?y ?x ?y) seq
-            (list ?x ?y)
-            nil))
-
 (mac if-match (pat seq then (o else nil))
   `(withs ,(mappend (fn (v) `(,v ',(uniq)))
                     (vars-in pat simple?))
@@ -1223,7 +1218,7 @@
             (gen-match (car refs) then else)))))
 
 (def match1 (refs then else)
-  (let ((pat expr) . rest) refs
+  (dbind ((pat expr) . rest) refs
     (if (uniq? pat)
           `(let ,pat ,expr
              (if (and (seq? ,pat)
@@ -1234,10 +1229,10 @@
         (var? pat)
           (w/uniq ge
             `(let ,ge ,expr
-               (if (or (uniq? ,pat) (is ,pat ,ge))
+               (if (or (uniq? ,pat) (iso ,pat ,ge))
                    (let ,pat ,ge ,then)
                    ,else)))
-          `(if (is ,pat ,expr) ,then ,else))))
+          `(if (iso ,pat ,expr) ,then ,else))))
 
 (def seq? (x)
   (or (alist x) (isa x 'table) (isa x 'string)))
@@ -1254,8 +1249,9 @@
         `(is (len ,pat) ,(len rest))
         `(> (len ,pat) ,(- (len rest) 2)))))
 
+; code for debug
 (def prf (f name)
-  (fn args 
+  (fn args
     (let res nil
       (prn name args)
       (= res (apply f args))
@@ -1264,3 +1260,8 @@
 
 (mac prfn (f)
   `(= ,f (prf ,f ',f)))
+
+(def abab (seq)
+  (if-match (?x ?y ?x ?y) seq
+            (list ?x ?y)
+            nil))

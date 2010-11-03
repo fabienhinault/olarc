@@ -107,5 +107,31 @@
        (abab "abab")
        (#\a #\b)))
     )
+  (suite "Chap 19"
+    (suite "fig 19.5"
+      ("The first name and nationality of every painter called Hogarth."
+       (let l nil (w/answer (painter hogarth ?x ?y) (push (list ?x ?y) l)) l)
+       ((william english)))
+      ("The last name of every painter born in 1697."
+       (let l nil (w/answer (and (painter ?x _ _)
+                                 (dates ?x 1697 _))
+                            (push ?x l)) l)
+       (hogarth canale))
+      ("The last name and year of birth of everyone who died in 1772 or 1792."
+       (let l  nil (w/answer (or (dates ?x ?y 1772)
+                               (dates ?x ?y 1792))
+                           (push (list ?x ?y) l))
+            l)
+       ((reynolds 1723) (hogarth 1697)))
+      ((+ "The last name of every English painter not born the same year "
+         "as a Venetian one.")
+       (let l nil (w/answer (and (painter ?x _ english)
+                                 (dates ?x ?b _)
+                                 (not (and (painter ?x2 _ venetian)
+                                           (dates ?x2 ?b _))))
+                            (push ?x l))
+            l)
+       (reynolds))
+      ))
 ;2 closing parentheses after the chapter suites
 )) ;(register-test '(suite "On Lisp Tests"

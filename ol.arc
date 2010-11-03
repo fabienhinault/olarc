@@ -1243,6 +1243,7 @@
 (def cdar (x)
   (cdr:car x))
 
+;! last is different in arc and in common lisp
 (def length-test (pat rest)
   (let fin (caar:cdr:last rest)
     (if (acons fin)
@@ -1265,3 +1266,93 @@
   (if-match (?x ?y ?x ?y) seq
             (list ?x ?y)
             nil))
+
+;chap 19
+(def make-db ()
+  (table))
+
+(= default-db* (make-db))
+
+(def clear-db ((o db default-db*))
+  (= db (table)))
+
+(mac db-query (key (o db 'default-db*))
+  `(,db ,key))
+
+(def db-push (key val (o db default-db*))
+  (push val (db key)))
+
+(mac fact (pred . args)
+  `(do
+     (db-push ',pred ',args)
+     ',args))
+
+;edible = eatable
+
+;; mapcan
+;; Function arguments:
+;;   (function list &rest more-lists)
+;; Function documentation:
+;;   Applies fn to successive elements of list, returns NCONC of results.
+;; Its declared argument types are:
+;;   ((OR FUNCTION SYMBOL) LIST &REST LIST)
+;; Its result type is:
+;;   LIST
+
+(def lookup (pred args (o binds nil))
+  (mappend (fn (x)
+             (aif (match x args binds) (list it)))
+           (db-query pred)))
+
+;dolist
+;; dolist binds a variable to the elements of a list in order and stops 
+;; when it hits the end of the list.
+
+;;     > (dolist (x '(a b c)) (print x))
+;;     A 
+;;     B 
+;;     C 
+;;     NIL 
+
+
+
+(mac w/answer (query . body)
+  (w/uniq binds
+    `(each ,binds (interpret-query ',query)
+       (withs ,(mappend (fn (v)
+                      `(,v (binding ',v ,binds)))
+                    (vars-in query atom))
+         ,@body))))
+
+(def interpret-query (expr (o binds nil))
+  (case (car expr)
+    and   (interpret-and (rev:cdr expr) binds)
+    or    (interpret-or  (cdr expr) binds)
+    not   (interpret-not (cadr expr) binds)
+          (lookup (car expr) (cdr expr) binds)))
+
+(def interpret-and (clauses binds)
+  (if (no clauses)
+      (list binds)
+      (mappend (fn (b)
+                 (interpret-query (car clauses) b))
+               (interpret-and (cdr clauses) binds))))
+
+(def interpret-or (clauses binds)
+  (mappend (fn (c)
+             (interpret-query c binds))
+           clauses))
+
+(def interpret-not (clause binds)
+  (if (interpret-query clause binds)
+      nil
+      (list binds)))
+
+(clear-db)
+(fact painter hogarth william english)
+(fact painter canale antonio venetian)
+(fact painter reynolds joshua english)
+(fact dates hogarth 1697 1772)
+(fact dates canale 1697 1768)
+(fact dates reynolds 1723 1792)
+

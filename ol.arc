@@ -11,10 +11,10 @@
   (if (no source)
       nil
       ((afn (source acc)
-	(let rest (nthcdr n source)
-	  (if (acons rest)
-	      (self rest (cons (cut source 0 n) acc))
-	      (rev (cons source acc)))))
+        (let rest (nthcdr n source)
+          (if (acons rest)
+              (self rest (cons (cut source 0 n) acc))
+              (rev (cons source acc)))))
        source nil)))
 
 
@@ -188,21 +188,21 @@
 (def ttrav (rec (o base idfn))
   (afn (tree)
     (if (atom tree)
-	(if (fn? base)
-	    (base tree)
-	    base)
-	(rec (self:car tree)
-	     (when (cdr tree) (self:cdr tree))))))
+        (if (fn? base)
+            (base tree)
+            base)
+        (rec (self:car tree)
+             (when (cdr tree) (self:cdr tree))))))
 
 (def trec (rec (o base idfn))
   (afn (tree)
     (if (atom tree)
-	(if (fn? base)
-	    (base tree)
-	    base)
-	(rec tree
-	     (fn ()(self:car tree))
-	     (fn ()(when (cdr tree) (self:cdr tree)))))))
+        (if (fn? base)
+            (base tree)
+            base)
+        (rec tree
+             (fn ()(self:car tree))
+             (fn ()(when (cdr tree) (self:cdr tree)))))))
     
 
 (= nodes* (table))
@@ -211,28 +211,28 @@
 
 (def defnode (name conts (o yes nil) (o nope nil))
      (= (nodes* name)
-	(list conts yes nope)))
+        (list conts yes nope)))
 
 
 (def run-node (name)
      (let n (nodes* name)
-	  (if (cadr n)
-	      (do 
-	       (prf "~\n\n" (car n))
-	       (case (read)
-		     yes (run-node (cadr n))
-		         (run-node (car:cddr n))))
-	    (car n))))
+          (if (cadr n)
+              (do 
+               (prf "~\n\n" (car n))
+               (case (read)
+                     yes (run-node (cadr n))
+                         (run-node (car:cddr n))))
+            (car n))))
 
 (def defnode (name conts (o yes nil) (o nope nil))
      (= (nodes* name)
-	(if yes
-	    (fn () 
-		(prf "~\n\n" conts)
-		(case (read)
-		      yes ((nodes* yes))
+        (if yes
+            (fn () 
+                (prf "~\n\n" conts)
+                (case (read)
+                      yes ((nodes* yes))
                           ((nodes* nope))))
-	  (fn () conts))))
+          (fn () conts))))
 
 (= nodes* nil)
 
@@ -242,20 +242,20 @@
 
 (def compile-net (root)
      (let node (assoc root nodes*)
-	  (if (no node)
-	      nil
-	    (with (conts (cadr node)
-		   yes   (car:cddr node)
-		   nope  (car:cddr:cdr node))
-		  (if yes
-		      (with (yes-fn (compile-net yes)
-			     no-fn (compile-net nope))
-			    (fn ()
-				(prf "~\n\n" conts)
-				(if (is (read) 'yes)
-				    (yes-fn)
-				  (no-fn))))
-		    (fn () conts))))))
+          (if (no node)
+              nil
+            (with (conts (cadr node)
+                   yes   (car:cddr node)
+                   nope  (car:cddr:cdr node))
+                  (if yes
+                      (with (yes-fn (compile-net yes)
+                             no-fn (compile-net nope))
+                            (fn ()
+                                (prf "~\n\n" conts)
+                                (if (is (read) 'yes)
+                                    (yes-fn)
+                                  (no-fn))))
+                    (fn () conts))))))
 
 (defnode 'people "Is the person a man?" 'male 'female)
 (defnode 'male "Is he living" 'liveman 'deadman)
@@ -270,7 +270,7 @@
 (def nth (l . args)
   (if (no (cdr args))
       (car (nthcdr (car args) l ))
-	 (apply nth (cons (nth l (car args)) (cdr args)))))
+         (apply nth (cons (nth l (car args)) (cdr args)))))
 
 (def index-subst (l index new)
   (if (is index 0)
@@ -291,33 +291,33 @@
   (if (pred tree)
       (base tree)
       (f (treewisep f base (car tree) pred)
-	 (treewisep f base (cdr tree) pred))))
+         (treewisep f base (cdr tree) pred))))
 
 (def apply-move (initial line taken)
   (let newNb (- (car:nthcdr line initial) taken)
     (when (>= newNb 0)
       (index-subst initial line newNb))))
-	  
-;arc0 impl			  
+          
+;arc0 impl                          
 ;; (defmemo next-positions (l)
 ;;   (rev 
 ;;     (accum a
 ;;       (forlen line l
-;; 	(a 
-;; 	  (rev  
-;; 	    (accum b
-;; 	      (each taken (range 1 3)
-;; 		(aif (apply-move l line taken)
-;; 		     (b it))))))))
+;;         (a 
+;;           (rev  
+;;             (accum b
+;;               (each taken (range 1 3)
+;;                 (aif (apply-move l line taken)
+;;                      (b it))))))))
 ;;     )) ;arc0
 
 (defmemo next-positions (l)
   (accum a
     (forlen line l
       (a (accum b
-	   (each taken (range 1 3)
-	     (aif (apply-move l line taken)
-		  (b it))))))))
+           (each taken (range 1 3)
+             (aif (apply-move l line taken)
+                  (b it))))))))
 
 ;arclite impl
 ;; (def display (l)
@@ -354,12 +354,12 @@
   (if (iso l '(0 0 0 0))
       (prn "Bravo !")
     (withs (lnextpos (next-positions l)
-	    loosing (find-loosing l))
+            loosing (find-loosing l))
       (display l)
       (prn "---------------")
       (if (no loosing) 
-	  (ask-move (rand-elt (flatp lnextpos isapos)))
-	(ask-move loosing)))))
+          (ask-move (rand-elt (flatp lnextpos isapos)))
+        (ask-move loosing)))))
 
 (def alumettes-simple ()
   (let l '(6 5 4 3)
@@ -367,39 +367,39 @@
     (prn "Tapez 'l' pour me laisser commencer, sinon le numéro de ligne.")
     (= line (read))
     (if (is line 'l)
-	(play l)
-	(do
-	  (pr "nombre d'alumettes (1, 2 ou 3)?")
-	  (= taken (read))
-	  (play (apply-move l (- line 1) taken))))))
+        (play l)
+        (do
+          (pr "nombre d'alumettes (1, 2 ou 3)?")
+          (= taken (read))
+          (play (apply-move l (- line 1) taken))))))
 
 (defmemo compile-ask-move (l)
   (if (iso l '(0 0 0 0))
-	(fn () (display '(0 0 0 0))(prn "Perdu !"))
+        (fn () (display '(0 0 0 0))(prn "Perdu !"))
       (let tnext-fns (treewisep cons 
-				[if (no _) nil (compile-position _)]
-				(next-positions l) 
-				[or (no _) (isapos _)])
-	(fn ()
-	  (display l)
-	  (pr "ligne?")
-	  (= line (read))
-	  (pr "nombre d'alumettes (1, 2 ou 3)?")
-	  (= taken (read))
-	  ((nth tnext-fns (- line 1) (- taken 1)))))))
+                                [if (no _) nil (compile-position _)]
+                                (next-positions l) 
+                                [or (no _) (isapos _)])
+        (fn ()
+          (display l)
+          (pr "ligne?")
+          (= line (read))
+          (pr "nombre d'alumettes (1, 2 ou 3)?")
+          (= taken (read))
+          ((nth tnext-fns (- line 1) (- taken 1)))))))
 
 (defmemo compile-position (l)
   (if (iso l '(0 0 0 0))
       (fn () (prn "Bravo !"))
-	  (withs (lnextpos (next-positions l)
-		  loosing (find-loosing l)
-		  ask-fn (if (no loosing) 
-			     (compile-ask-move (rand-elt (flatp lnextpos isapos)))
-			   (compile-ask-move loosing)))
-	    (fn ()
-	      (display l)
-	      (prn "---------------")
-	      (ask-fn)))))
+          (withs (lnextpos (next-positions l)
+                  loosing (find-loosing l)
+                  ask-fn (if (no loosing) 
+                             (compile-ask-move (rand-elt (flatp lnextpos isapos)))
+                           (compile-ask-move loosing)))
+            (fn ()
+              (display l)
+              (prn "---------------")
+              (ask-fn)))))
 
 (def alumettes ()
   (let l '(6 5 4 3)
@@ -407,11 +407,11 @@
     (prn "Tapez 'l' pour me laisser commencer, sinon le numéro de ligne.")
     (= line (read))
     (if (is line 'l)
-	((compile-position l))
-	(do
-	  (pr "nombre d'alumettes (1, 2 ou 3)?")
-	  (= taken (read))
-	  ((compile-position (apply-move l (- line 1) taken)))))))
+        ((compile-position l))
+        (do
+          (pr "nombre d'alumettes (1, 2 ou 3)?")
+          (= taken (read))
+          ((compile-position (apply-move l (- line 1) taken)))))))
 
 
 ; end matches
@@ -430,8 +430,8 @@
 
 (mac nif (expr pos zero neg)
   (list 'if (list '> expr 0) pos
-	    (list 'is expr 0) zero
-	    neg))
+            (list 'is expr 0) zero
+            neg))
 
 (def greet (name)
   `(hello ,name))
@@ -444,7 +444,7 @@
 (mac our-dolist ((var l (o result nil)) . body)
   `(do
      (map (fn (,var) ,@body)
-	  ,l)
+          ,l)
      (let ,var nil
        ,result)))
 
@@ -464,20 +464,20 @@
   (map
     (fn (b)
       (if (acons b)
-	  (list (car b) (b 1))
-	  (list b nil)))
+          (list (car b) (b 1))
+          (list b nil)))
     bindforms))
 (def make-stepforms (bindforms)
   (map 
     (fn (b)
       (if (and (acons b) (b 2))
-	  (list (car b) (b 2))
-	  nil))
+          (list (car b) (b 2))
+          nil))
     bindforms))
 
 ;; (cl-do
 ;;        ((a 0 (++ a))
-;; 	(b 1 ([= _ (+ 2 _)] b)))
+;;         (b 1 ([= _ (+ 2 _)] b)))
 ;;        ((< a 10))
 ;;        (pr a)
 ;;        (pr b))
@@ -489,29 +489,29 @@
     0 t
     1 (car args)
       `(if ,(car args)
-	   (our-and ,@(cdr args)))))
+           (our-and ,@(cdr args)))))
 
 (mac our-andb args
   (if (no args)
       t
       (w/uniq (gf gp)
       `((rfn ,gf (,gp) ;ou bien rfn
-	  (if (cdr ,gp)
-	      (if (car ,gp)
-		  (,gf (cdr ,gp)))
-	    (car ,gp)))
-	  (list ,@args)))))
+          (if (cdr ,gp)
+              (if (car ,gp)
+                  (,gf (cdr ,gp)))
+            (car ,gp)))
+          (list ,@args)))))
 
 (mac our-andb2 args
   (if (no args)
       t
       (let self 
-	  (fn (rest)
-	    (if (cdr rest)
-		`(if ,(car rest)
-		     ,(self (cdr rest)))
-		(car rest)))
-	(self args))))
+          (fn (rest)
+            (if (cdr rest)
+                `(if ,(car rest)
+                     ,(self (cdr rest)))
+                (car rest)))
+        (self args))))
 
 
 
@@ -557,8 +557,8 @@
 (mac nthe (n l)
   `((rfn nth-fn (nn ll)
       (if (is nn 0)
-	  (car ll)
-	  (nth-fn (- nn 1) (cdr ll))))
+          (car ll)
+          (nth-fn (- nn 1) (cdr ll))))
     ,n ,l))
 
 (mac ora args
@@ -567,19 +567,19 @@
   (if (no args)
       nil
       (w/uniq s
-	`(let ,s ,(car args)
-	   (if ,s
-	       ,s
-	       ,(or-expand (cdr args)))))))
+        `(let ,s ,(car args)
+           (if ,s
+               ,s
+               ,(or-expand (cdr args)))))))
 
 (mac orb args
   (if (no args)
       nil
       (w/uniq s
-	`(let ,s ,(car args)
-	   (if ,s
-	       ,s
-	       (orb ,@(cdr args)))))))
+        `(let ,s ,(car args)
+           (if ,s
+               ,s
+               (orb ,@(cdr args)))))))
 
 
 ;chap 11
@@ -589,8 +589,8 @@
 (def remove-duplicates (l)
   ((afn (xs acc)
      (if (no xs)              (rev acc)
-	 (find (car xs) acc)  (self (cdr xs) acc)
-	                      (self (cdr xs) (cons (car xs) acc))))
+         (find (car xs) acc)  (self (cdr xs) acc)
+                              (self (cdr xs) (cons (car xs) acc))))
    l nil))
 
 (def insert-after-every (e xs)
@@ -601,27 +601,27 @@
 (mac condlet (clauses . body)
   (w/uniq bodfn
     (let vars (map [cons _ (uniq)]
-		   (remove-duplicates (map car (mappend cdr clauses))))
+                   (remove-duplicates (map car (mappend cdr clauses))))
       `(let ,bodfn (fn ,(map car vars) ,@body)
-	 (if ,@(mappend [condlet-clause vars _ bodfn]
-		    clauses))))))
+         (if ,@(mappend [condlet-clause vars _ bodfn]
+                    clauses))))))
 
 ;; (mac condlet (clauses . body)
 ;;   (w/uniq bodfn
 ;;     (let vars (map [cons _ (uniq)]
-;; 		   (remove-duplicates (map car (mappend cdr clauses))))
+;;                    (remove-duplicates (map car (mappend cdr clauses))))
 ;;       `(pr vars))))
 
 (def condlet-clause (vars cl bodfn)
   `(,(car cl) (with ,(insert-after-every nil (map cdr vars))
-		(= ,@(condlet-binds vars cl))
-		(,bodfn ,@(map cdr vars)))))
+                (= ,@(condlet-binds vars cl))
+                (,bodfn ,@(map cdr vars)))))
 
 (def condlet-binds (vars cl)
   (mappend [if (acons _)
-	       (cons (cdr (assoc (car _) vars))
-		     (cdr _))]
-	   (cdr cl)))
+               (cons (cdr (assoc (car _) vars))
+                     (cdr _))]
+           (cdr cl)))
 
       
 
@@ -630,13 +630,13 @@
   (w/uniq temp
     `(let ,temp *db*
        (unwind-protect ;atomic ?
-	 (do
-	   (= *db* ,db)
-	   (lock *db*)
-	   ,@body)
-	 (do
-	   (release *db*)
-	   (= *db* ,temp))))))
+         (do
+           (= *db* ,db)
+           (lock *db*)
+           ,@body)
+         (do
+           (release *db*)
+           (= *db* ,temp))))))
 
 (mac if3 (test t-case nil-case ?-case)
   `(case ,test
@@ -648,9 +648,9 @@
   (w/uniq g
     `(let ,g ,expr
        (if (> 0 ,g)   ,pos
-	   (is 0 ,g)  ,zero
-	    ,neg))))
-	   
+           (is 0 ,g)  ,zero
+            ,neg))))
+           
 
 ;11.6
 (mac in (obj . choices)
@@ -674,42 +674,42 @@
 (def >casex (g cl)
   (with (key (car cl) rest (cdr cl))
     (if (acons key)  '((in ,g ,key) ,@rest)
-	(inq key t otherwise) ,@rest
+        (inq key t otherwise) ,@rest
         (error "bad >case clause"))))
 
 (mac do-tuples/o (parms source . body)
   (if parms
       (w/uniq src
-	`(let ,src ,source
-	   (map (fn ,parms ,@body)
-		,@(map0-n (fn (n) `(nthcdr ,n ,src)) (- (len parms) 1)))))))
+        `(let ,src ,source
+           (map (fn ,parms ,@body)
+                ,@(map0-n (fn (n) `(nthcdr ,n ,src)) (- (len parms) 1)))))))
 
 
 (mac do-tuples/c (parms source . body)
   (if parms
       (w/uniq (src rest bodfn)
-	(let np (len parms)
-	  `(let ,src ,source
-	     (when (nthcdr ,(- np 1) ,src)
-	       (let ,bodfn (fn ,parms ,@body)
-		 (loop (= ,rest ,src) 
-		       (nthcdr ,(- np 1) ,rest) 
-		       (= ,rest (cdr ,rest))
-		       (,bodfn ,@(map1-n (fn (n) `(,rest ,(- n 1))) np)))
-		 ,@(map (fn (args) `(,bodfn ,@args))
-			(dt-args np rest src))))
-	     nil)))))
+        (let np (len parms)
+          `(let ,src ,source
+             (when (nthcdr ,(- np 1) ,src)
+               (let ,bodfn (fn ,parms ,@body)
+                 (loop (= ,rest ,src) 
+                       (nthcdr ,(- np 1) ,rest) 
+                       (= ,rest (cdr ,rest))
+                       (,bodfn ,@(map1-n (fn (n) `(,rest ,(- n 1))) np)))
+                 ,@(map (fn (args) `(,bodfn ,@args))
+                        (dt-args np rest src))))
+             nil)))))
 
 (def dt-args (np rest src)
   (map0-n (fn (m) 
-	    (map1-n (fn (n)
-		      (let x (+ m n)
-			(if (>= x np)
-			    `(,src ,(- x np))
-			    `(,rest ,(- x 1)))))
-		    np))
-	  (- np 2)))
-		    
+            (map1-n (fn (n)
+                      (let x (+ m n)
+                        (if (>= x np)
+                            `(,src ,(- x np))
+                            `(,rest ,(- x 1)))))
+                    np))
+          (- np 2)))
+                    
 ;chap 12
 
 ;12.1
@@ -747,26 +747,26 @@
 
 (mac zappendnew (l obj)
   `(zap (fn (place obj)
-	  (unless (mem obj place)
-	    (join place (list obj))))
-	,l
-	,obj))
+          (unless (mem obj place)
+            (join place (list obj))))
+        ,l
+        ,obj))
 
 ;12.3
 (mac popn (n place)
   (w/uniq (gn gl)
     (let (binds val setter) (setforms place)
       `(atwiths ,(+ binds (list gn n gl val))
-		(do1 (firstn ,gn ,gl)
-		     (,setter (nthcdr ,gn ,gl)))))))
+                (do1 (firstn ,gn ,gl)
+                     (,setter (nthcdr ,gn ,gl)))))))
 
 ;12.4
 
 ;; (mac defr (f args rf)
 ;;   `(def f args
 ;;        (if no xs
-;; 	   nil
-;; 	   (rf f args))))
+;;            nil
+;;            (rf f args))))
 
 ;; (defr copylist (xs) 
 ;;       [cons (car _) (
@@ -783,17 +783,17 @@
 
 (mac sortf (op . places)
   (with (meths (map setforms places)
-	 temps (n-of (len places) (uniq)))
+         temps (n-of (len places) (uniq)))
     `(withs ,(+ (mappend [_ 0] meths)
-	       (mappend (fn (m t) (list t (m 1))) meths temps))
+               (mappend (fn (m t) (list t (m 1))) meths temps))
        ,@(mapcon
-	   (fn 
-	     (rest)
-	     (map
-	       (fn (arg) `(unless (,op ,(car rest) ,arg)
-				(swap ,(car rest) ,arg)))
-	       (cdr rest)))
-	   temps)
+           (fn 
+             (rest)
+             (map
+               (fn (arg) `(unless (,op ,(car rest) ,arg)
+                                (swap ,(car rest) ,arg)))
+               (cdr rest)))
+           temps)
        ,@(map (fn (m t) `(,(m 2) ,t)) meths temps))))
 
 (= *cache* (table))
@@ -806,8 +806,8 @@
 (defset retrieve (key)
   (w/uniq g
     (list (list g key)
-	  `(retrieve ,g)
-	  `(fn (val) (= (*cache* ,key) val)))))
+          `(retrieve ,g)
+          `(fn (val) (= (*cache* ,key) val)))))
     
 
 ;chap 13
@@ -819,7 +819,7 @@
 
 (def most-of args
   (with (all  0
-	 hits 0)
+         hits 0)
     (each a args
       (++ all)
       (if a (++ hits)))
@@ -829,8 +829,8 @@
   (w/uniq hits
     (let need (floor (/ (len args) 2))
       `(let ,hits 0
-	 (or ,@(map (fn (a) `(and ,a (> (++ ,hits) ,need)))
-		    args))))))
+         (or ,@(map (fn (a) `(and ,a (> (++ ,hits) ,need)))
+                    args))))))
 
 (def nthmost (n l)
   ((sort > l) n))
@@ -838,36 +838,36 @@
 (mac nthmost (n l)
   (if (and (number n) (< n 20))
       (w/uniq (gl gi)
-	(let syms (map0-n [uniq] n)
-	  `(let ,gl ,l
-	     (unless (< (len ,gl) ,(+ 1 n))
-	       ,@(gen-start gl syms)
-	       (each ,gi ,gl
-		 ,(nthmost-gen gi syms t))
-	       ,(last syms)))))
+        (let syms (map0-n [uniq] n)
+          `(let ,gl ,l
+             (unless (< (len ,gl) ,(+ 1 n))
+               ,@(gen-start gl syms)
+               (each ,gi ,gl
+                 ,(nthmost-gen gi syms t))
+               ,(last syms)))))
       `((sort > l) n)))
 
 (def gen-start (gl syms)
   (rev
     (maplist
-	(fn (syms)
-	  (w/uniq var
-	    `(let ,var (pop ,gl)
-	       ,(nthmost-gen var (rev syms)))))
-	(rev syms))))
+        (fn (syms)
+          (w/uniq var
+            `(let ,var (pop ,gl)
+               ,(nthmost-gen var (rev syms)))))
+        (rev syms))))
 
 (def nthmost-gen (var vars (o long? nil))
   (if (no vars)
       nil
       (let else (nthmost-gen var (cdr vars) long?)
-	(if (and (no long?) (no else))
-	    `(= ,(car vars) ,var)
-	    `(if (> ,var ,(car vars))
-		 (= ,@(mappend list
-			       (rev vars)
-			       (cdr (rev vars)))
-		    ,(car vars) ,var)
-		 ,else)))))
+        (if (and (no long?) (no else))
+            `(= ,(car vars) ,var)
+            `(if (> ,var ,(car vars))
+                 (= ,@(mappend list
+                               (rev vars)
+                               (cdr (rev vars)))
+                    ,(car vars) ,var)
+                 ,else)))))
 
 
 (= *segs* 20)
@@ -877,44 +877,44 @@
 (mac genbez (x0 y0 x1 y1 x2 y2 x3 y3)
   (w/uniq (gx0 gx1 gy0 gy1 gx3 gy3)
     `(withs (,gx0 ,x0 ,gy0 ,y0
-	     ,gx1 ,x1 ,gy1 ,y1
-	     ,gx3 ,x3 ,gy3 ,y3
-	     cx (* (- ,gx1 ,gx0) 3)
-	     cy (* (- ,gy1 ,gy0) 3)
-	     px (* (- ,x2 ,gx1) 3)
-	     py (* (- ,y2 ,gy1) 3)
-	     bx (- px cx)
-	     by (- py cy)
-	     ax (- ,gx3 px ,gx0)
-	     ay (- ,gy3 py ,gy0))
+             ,gx1 ,x1 ,gy1 ,y1
+             ,gx3 ,x3 ,gy3 ,y3
+             cx (* (- ,gx1 ,gx0) 3)
+             cy (* (- ,gy1 ,gy0) 3)
+             px (* (- ,x2 ,gx1) 3)
+             py (* (- ,y2 ,gy1) 3)
+             bx (- px cx)
+             by (- py cy)
+             ax (- ,gx3 px ,gx0)
+             ay (- ,gy3 py ,gy0))
        (= ((*pts* 0) 0) ,gx0
-	  ((*pts* 0) 0) ,gy0)
+          ((*pts* 0) 0) ,gy0)
        ,@(map1-n (fn (n) 
-		   (withs (u (* n *du*)
-			   u^2 (* u u)
-			   u^3 (* u u^2))
-		     `(= ((*pts* ,n) 0)
-			 (+ (* ax ,u^3)
-			    (* bx ,u^2)
-			    (* cx ,u)
-			    ,gx0)
-			 ((*pts* ,n) 1)
-			 (+ (* ay ,u^3)
-			    (* by ,u^2)
-			    (* cy ,u)
-			    ,gy0))))
-		 (- *segs* 1))
+                   (withs (u (* n *du*)
+                           u^2 (* u u)
+                           u^3 (* u u^2))
+                     `(= ((*pts* ,n) 0)
+                         (+ (* ax ,u^3)
+                            (* bx ,u^2)
+                            (* cx ,u)
+                            ,gx0)
+                         ((*pts* ,n) 1)
+                         (+ (* ay ,u^3)
+                            (* by ,u^2)
+                            (* cy ,u)
+                            ,gy0))))
+                 (- *segs* 1))
        (= ((*pts* *segs*) 0) ,gx3
-	  ((*pts* *segs*) 1) ,gy3))))
-		 
+          ((*pts* *segs*) 1) ,gy3))))
+                 
 ;chap 14
 
 (mac awhile (expr . body)
   `(let it nil
      (while ((fn (e) (= it e) it) ,expr)
-	    ,@body)))
+            ,@body)))
 
-	
+        
 ;chap 15
 
 (mac olfn (expr)
@@ -929,23 +929,23 @@
   (w/uniq g
     `(fn (,g)
        (,op ,@(map (fn (f) `(,(rbuild f) ,g))
-		   fns)))))
+                   fns)))))
 
 (def build-compose (fns)
   (w/uniq g
     `(fn (,g)
        ,((afn (fns)
-	  (if fns
-	      `(,(rbuild (car fns)) ,(self (cdr fns)))
-	      g))
-	  fns))))
+          (if fns
+              `(,(rbuild (car fns)) ,(self (cdr fns)))
+              g))
+          fns))))
 
 (mac alrec (rec (o base nil))
   (w/uniq gfn
     `(lrec (fn (it ,gfn)
-	     (let rec (fn () (,gfn))
-	       ,rec))
-	   ,base)))
+             (let rec (fn () (,gfn))
+               ,rec))
+           ,base)))
 
 ;symbol macros in arc?
 
@@ -986,9 +986,9 @@
 (def maxmin (args)
   (when args
     (on-cdrs (withs (l (rec) mx (car l) mn (cadr l))
-	       (list (max mx it) (min mn it)))
-	     (list (car args) (car args))
-	     (cdr args))))
+               (list (max mx it) (min mn it)))
+             (list (car args) (car args))
+             (cdr args))))
 ;15.3
 
 ;fig 15.5
@@ -1003,10 +1003,10 @@
 (mac atrec (rec (o base 'it))
   (w/uniq (lfn rfn)
     `(trec (fn (it ,lfn ,rfn)
-	     (withs (left (fn () (,lfn))
-		     right (fn () (,rfn)))
-	       ,rec))
-	   (fn (it) ,base))))
+             (withs (left (fn () (,lfn))
+                     right (fn () (,rfn)))
+               ,rec))
+           (fn (it) ,base))))
 
 (mac on-trees (rec base . trees)
   `((atrec ,rec ,base) ,@trees))
@@ -1022,14 +1022,14 @@
   (w/uniq self
     `(let ,self (list 'delay unforced nil)
        (= (,self 2)
-	  (fn () (= (cadr ,self) ,expr)))
+          (fn () (= (cadr ,self) ,expr)))
        ,self)))
 
 (def force (x)
   (if (delay-p x)
       (if (is (cadr x) unforced)
-	  ((x 2))
-	  (cadr x))
+          ((x 2))
+          (cadr x))
       x))
 
 ;chap 16
@@ -1044,7 +1044,7 @@
 (mac abbrevs names
   `(do
      ,@(map (fn (pair) `(abbrev ,@pair))
-	    (group names 2))))
+            (group names 2))))
 
 ;symbol properties in arc?
 
@@ -1054,10 +1054,10 @@
 (def a+expand (args syms)
   (if args
       (w/uniq symbol
-	`(withs (,symbol ,(car args)
-		 it ,symbol)
-	   ,(a+expand (cdr args)
-		      (+ syms (list symbol)))))
+        `(withs (,symbol ,(car args)
+                 it ,symbol)
+           ,(a+expand (cdr args)
+                      (+ syms (list symbol)))))
       `(+ ,@syms)))
 
 (def mass-cost (menu-price)
@@ -1069,10 +1069,10 @@
 (def alist-expand (args syms)
   (if args
       (w/uniq symbol
-	`(withs (,symbol ,(car args)
-		 it ,symbol)
-	   ,(alist-expand (cdr args) 
-			  (+ syms (list symbol)))))
+        `(withs (,symbol ,(car args)
+                 it ,symbol)
+           ,(alist-expand (cdr args) 
+                          (+ syms (list symbol)))))
       `(list ,@syms)))
 
 ;fig 16.4
@@ -1084,10 +1084,10 @@
 (def anaphex (args expr)
   (if args
       (w/uniq symb
-	`(withs (,symb ,(car args)
-		 it ,symb)
-	   ,(anaphex (cdr args)
-		     (+ expr (list symb)))))
+        `(withs (,symb ,(car args)
+                 it ,symb)
+           ,(anaphex (cdr args)
+                     (+ expr (list symb)))))
       expr))
 
 (def pop-symbol (symb)
@@ -1108,30 +1108,30 @@
   (if (no pat)
       nil
       (if (atom? pat)
-	  `((,pat (cut ,seq ,n)))
-	  (withs (p (car pat)
-		    rec (destruc (cdr pat) seq atom? (+ 1 n)))
-	    (if (atom? p)
-		(cons `(,p (,seq ,n))
-		      rec)
-		(w/uniq var
-		  (cons (cons `(,var (,seq ,n))
-			      (destruc p var atom?))
-			rec)))))))
+          `((,pat (cut ,seq ,n)))
+          (withs (p (car pat)
+                    rec (destruc (cdr pat) seq atom? (+ 1 n)))
+            (if (atom? p)
+                (cons `(,p (,seq ,n))
+                      rec)
+                (w/uniq var
+                  (cons (cons `(,var (,seq ,n))
+                              (destruc p var atom?))
+                        rec)))))))
 
 (def dbind-ex (binds body)
   (if (no binds)
       `(do ,@body)
       `(withs ,(mappend (fn (b) 
-		    (if (acons (car b))
-			(car b)
-			b))
-		  binds)
-	 ,(dbind-ex (mappend (fn (b) 
-			       (if (acons (car b))
-				   (cdr b)))
-			     binds)
-		    body))))
+                    (if (acons (car b))
+                        (car b)
+                        b))
+                  binds)
+         ,(dbind-ex (mappend (fn (b) 
+                               (if (acons (car b))
+                                   (cdr b)))
+                             binds)
+                    body))))
 
 ;no array, matrix or structure in arc
 
@@ -1169,8 +1169,8 @@
 (def binding (x binds)
   ((afn (x binds)
     (aif (assoc x binds)
-	 (or (self (cdr it) binds)
-	     (cdr it))))
+         (or (self (cdr it) binds)
+             (cdr it))))
    x binds))
 
 (mac if-match (pat seq then (o else nil))
@@ -1356,3 +1356,114 @@
 (fact dates canale 1697 1768)
 (fact dates reynolds 1723 1792)
 
+(mac w/answer (query . body)
+  `(w/uniq ,(vars-in query simple?)
+     ,(compile-query query `(do ,@body))))
+
+(def compile-query (q body)
+  (case (car q)
+    and  (compile-and (cdr q) body)
+    or   (compile-or  (cdr q) body)
+    not  (compile-not (cadr q) body)
+    lisp `(if ,(cadr q) ,body)
+         (compile-simple q body)))
+
+(def compile-simple (q body)
+  (w/uniq fact
+    `(each ,fact (db-query ',(car q))
+         (pat-match ,(cdr q) ,fact ,body nil))))
+
+(def compile-and (clauses body)
+  (if (no clauses)
+      body
+      (compile-query (car clauses)
+                     (compile-and (cdr clauses) body))))
+
+(def compile-or (clauses body)
+  (if (no clauses)
+      nil
+      (w/uniq gbod
+        (let vars (vars-in body simple?)
+          `(let ,gbod (fn ,vars ,body)
+                ,@(map (fn (cl)
+                         (compile-query cl `(,gbod ,@vars)))
+                       clauses))))))
+
+;block
+;http://www.lispworks.com/documentation/HyperSpec/Body/s_block.htm
+;; The special operators *block* and *return-from* work together to provide a 
+;; structured, lexical, non-local exit facility. 
+;; At any point lexically contained within forms, return-from can be used with 
+;; the given name to return control and values from the block form, except 
+;; when an intervening block with the same name has been established, in which 
+;; case the outer block is shadowed by the inner one.
+
+
+(def compile-not (q body)
+  (w/uniq tag
+    `(let ,tag nil
+          ,(compile-query q `(= ,tag t))
+          (if (no ,tag)
+              ,body))))
+
+;chap 20
+
+(def dft (tree)
+  (if (no tree)          nil
+      (no (acons tree))  (pr tree)
+                         (do (dft:car tree)
+                             (dft:cdr tree))))
+
+(= saved* nil)
+
+(def dft-node (tree)
+  (if (no tree)         (restart)
+      (no (acons tree)) tree
+                        (ccc
+                          (fn (c)
+                            (= saved*
+                               (cons (fn ()
+                                       (c (dft-node (cdr tree))))
+                                     saved*))
+                            (dft-node (car tree))))))
+
+(def restart ()
+  (if (no saved*)
+      'done
+      (let cont (car saved*)
+        (= saved* (cdr saved*))
+        (cont))))
+
+(def dft2 (tree)
+  (= saved* nil)
+  (let node (dft-node tree)
+    (if (is node 'done) nil
+                        (do (pr node)
+                            (restart)))))
+
+
+; with this code, without continuation, dft2 does not work
+;; (def dft-node (tree)
+;;   (if (no tree)         (restart)
+;;       (no (acons tree)) tree
+;;                         (do
+;;                           (= saved*
+;;                              (cons
+;;                                (fn ()
+;;                                  (dft-node (cdr tree)))
+;;                                saved*))
+;;                         (dft-node (car tree)))))
+
+;; (def restart ()
+;;   (if (no saved*)
+;;       'done
+;;       (let f (car saved*)
+;;         (= saved* (cdr saved*))
+;;         (f))))
+
+;(= t1 '(a (b (d h)) (c e (f i) g)))
+;(= t2 '(1 (2 (3 6 7) 4 5)))
+
+;http://www.thefreedictionary.com/shaft
+;shaft 8.  A long, narrow, often vertical passage sunk into the earth,
+;as for mining ore; a tunnel.

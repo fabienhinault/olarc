@@ -108,9 +108,11 @@
        (#\a #\b)))
     )
   (suite "Chap 19"
-    (suite "fig 19.5"
+    (suite "query interpreter"
+;compiling version of w/answer is defined after, 
+;so it is the one which is tested
       ("The first name and nationality of every painter called Hogarth."
-       (let l nil (w/answer (painter hogarth ?x ?y) (push (list ?x ?y) l)) l)
+       (let l nil (w/answer (painter 'hogarth ?x ?y) (push (list ?x ?y) l)) l)
        ((william english)))
       ("The last name of every painter born in 1697."
        (let l nil (w/answer (and (painter ?x _ _)
@@ -118,20 +120,30 @@
                             (push ?x l)) l)
        (hogarth canale))
       ("The last name and year of birth of everyone who died in 1772 or 1792."
-       (let l  nil (w/answer (or (dates ?x ?y 1772)
-                               (dates ?x ?y 1792))
-                           (push (list ?x ?y) l))
+       (let l nil (w/answer (or (dates ?x ?y 1772)
+				(dates ?x ?y 1792))
+			    (push (list ?x ?y) l))
             l)
        ((reynolds 1723) (hogarth 1697)))
       ((+ "The last name of every English painter not born the same year "
          "as a Venetian one.")
-       (let l nil (w/answer (and (painter ?x _ english)
+       (let l nil (w/answer (and (painter ?x _ 'english)
                                  (dates ?x ?b _)
-                                 (not (and (painter ?x2 _ venetian)
+                                 (not (and (painter ?x2 _ 'venetian)
                                            (dates ?x2 ?b _))))
                             (push ?x l))
             l)
        (reynolds))
+      )
+    (suite "query compiler"
+      ((+ "The last name and year of death of every painter who died "
+	  "between 1770 and1800 exclusive.")
+       (let l nil (w/answer (and (painter ?x _ _)
+				 (dates ?x _ ?d)
+				(lisp (< 1770 ?d 1800)))
+			    (push (list ?x ?d) l))
+	    l)
+       ((hogarth 1772) (reynolds 1792)))
       ))
 ;2 closing parentheses after the chapter suites
 )) ;(register-test '(suite "On Lisp Tests"

@@ -40,14 +40,14 @@
 
 (def split-if (f l)
   ((afn (acc src)
-     (if (or (no src) (f:car src)) 
+     (if (or (no src) (f:car src))
          (list (rev acc) src)
          (self (cons (car src) acc) (cdr src))))
     nil l))
 
 (def most (f l)
   ((afn (wins max src)
-      (if (no src) 
+      (if (no src)
           (list wins max)
           (let score (f:car src)
             (if (> score max)
@@ -1189,7 +1189,7 @@
              (vars-in (cdr expr) atom?))))
 
 (def var? (x)
-  (and x (isa x 'sym) (is ((stringify x) 0) #\?)))
+  (and x (isa x 'sym) (is ((string x) 0) #\?)))
 
 (mac if-match (pat seq then (o else nil))
   `(withs ,(mappend (fn (v) `(,v ',(uniq)))
@@ -1467,3 +1467,53 @@
 ;http://www.thefreedictionary.com/shaft
 ;shaft 8.  A long, narrow, often vertical passage sunk into the earth,
 ;as for mining ore; a tunnel.
+
+(= cont* idfn)
+
+(mac =fn (parms . body)
+  `(fn (cont* ,@parms) ,@body))
+
+
+; ,,@ does not work with parms = nil
+;; (mac =def (name parms . body)
+;;   (let f (sym (+ "=" (string name)))
+;;     `(do
+;;        (mac ,name ,parms
+;;          `(,',f cont* ,,@parms))
+;;        (def ,f (cont* ,@parms) ,@body))))
+
+(mac =def (name parms . body)
+  (let f (sym (+ "=" (string name)))
+    `(do
+       (mac ,name ,parms
+         (list ',f 'cont* ,@parms))
+       (def ,f (cont* ,@parms) ,@body))))
+
+;;   (defmacro once-only ((&rest names) &body body)
+;;     (let ((gensyms (loop for n in names collect (gensym))))
+;;       `(let (,@(loop for g in gensyms collect `(,g (gensym))))
+;;         `(let (,,@(loop for g in gensyms for n in names collect ``(,,g ,,n)))
+;;           ,(let (,@(loop for n in names for g in gensyms collect `(,n ,g)))
+;;              ,@body)))))
+
+;;   (mac once-only (names . body)
+;;     (let gensyms (map1 [uniq] names)
+;;       `(w/uniq ,gensyms
+;;          (list 'with (list ,@(mappend list gensyms names))
+;;            (with ,(mappend list names gensyms)
+;;              ,@body)))))
+
+
+(mac =bind (parms expr . body)
+  `(let cont* (fn ,parms ,@body) ,expr))
+;defines the continuation with the body before to pass it to expr
+
+(mac =values retvals
+  `(cont* ,@retvals))
+
+(mac =fncall (f . args)
+  '(,fn cont* ,@args))
+
+(mac =apply (f . args)
+  `(apply ,f cont* ,@args))
+

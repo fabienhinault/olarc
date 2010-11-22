@@ -1251,16 +1251,17 @@
         `(> (len ,pat) ,(- (len rest) 2)))))
 
 ; code for debug
-(def prf (f name)
-  (fn args
-    (let res nil
-      (prn name args)
-      (= res (apply f args))
-      (prn name " <-- " res)
-      res)))
+;TODO rename prf is taken for print format
+;; (def prf (f name)
+;;   (fn args
+;;     (let res nil
+;;       (prn name args)
+;;       (= res (apply f args))
+;;       (prn name " <-- " res)
+;;       res)))
 
-(mac prfn (f)
-  `(= ,f (prf ,f ',f)))
+;; (mac prfn (f)
+;;   `(= ,f (prf ,f ',f)))
 
 (def abab (seq)
   (if-match (?x ?y ?x ?y) seq
@@ -1523,40 +1524,113 @@
 
 ;chap 21
 (= procs* nil)
+(= proc* nil)
 (= halt* (uniq))
 
 
 (= default-proc*
-   (list 'proc 
+   (list 'proc
          nil
          (fn (x)
-           (pr (eval (read)))
+	   (pr ">> ")
+           (prn (eval (read)))
            (pick-process))
          nil))
 
 (mac fork (expr pri)
   `(do1 ',expr
         (push (list 'proc
-                    nil
+                    ,pri
                     (fn (,(uniq))
                       ,expr
                       (pick-process))
                     nil)
-              procs*))
+              procs*)))
 
+;catch is implemented by creating a context, but eval ignore any context,
+;so throw is undefined. Use a global continuation instead.
 (mac program (name args . body)
   `(def ,name ,args
      (= procs* nil)
      ,@body
-     (catch (loop (pick-process)))))
-
+     (ccc
+       (fn (c)
+	 (= halt* c)
+	 (while t (pick-process))))))
 
 ;; * (describe 'catch)
-
 ;; CATCH is an external symbol in the COMMON-LISP package.
 ;; Special form documentation:
 ;;   Catch Tag Form*
 ;;   Evaluates Tag and instantiates it as a catcher while the body forms are
-;;   evaluated in an implicit PROGN.  If a THROW is done to Tag within the dynamic
+;;   evaluated in an implicit PROGN.
+;;   If a THROW is done to Tag within the dynamic
 ;;   scope of the body, then control will be transferred to the end of the body
 ;;   and the thrown values will be returned.
+
+(def pick-process ()
+  (let (p val) (most-urgent-process)
+       (= proc* p
+	  procs* (rem p procs*))
+       ((p 2) val)))
+
+(def most-urgent-process ()
+  (withs (proc1 default-proc*
+	  max   -1
+	  val1  t)
+    (each p procs*
+      (let pri (p 1)
+	(if (> pri max)
+	    (let val (or (no (p 3))
+			 ((p 3)))
+	      (when val
+		(= proc1 p
+		   max   pri
+		   val1  val))))))
+    (list proc1 val1)))
+
+(def arbitrator (test cont)
+  (= (proc* 2) cont
+     (proc* 3) test)
+  (push proc* procs*)
+  (pick-process))
+
+;; (mac wait (parm test . body)
+;;   `(arbitrator (fn () ,test)
+;;	       (fn (,parm) ,@body)))
+
+(mac wait (test)
+  `(ccc
+     (fn (c)
+       (arbitrator (fn () ,test)
+		   c))))
+;; (mac yield body
+;;   `(arbitrator nil (fn (,(uniq)) ,@body)))
+
+(def yield ()
+  (ccc
+    (fn (c)
+      (arbitrator nil c))))
+
+(def setpri (n)
+  (= (car proc*) n))
+
+(def halt ()
+  (halt* nil))
+
+(def kill ((o obj nil))
+  (if obj
+      (= procs* (rem obj procs*))
+      (pick-process)))
+
+;to loot : to steal, especially as part of war, riot or other group violence.
+;to plunder : (transitive) To pillage, take or destroy all the goods of,
+; by force (as in war); to raid, sack.
+;to ransom : To pay a price to set someone free from captivity or punishment.
+
+(= open-doors* nil)
+(def pedestrian ()
+  (prn (wait (car open-doors*))))
+(program ped ()
+  (fork (pedestrian) 1))
+

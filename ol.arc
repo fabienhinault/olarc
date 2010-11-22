@@ -1416,30 +1416,30 @@
 
 (= saved* nil)
 
-(def dft-node (tree)
-  (if (no tree)         (restart)
-      (no (acons tree)) tree
-                        (ccc
-                          (fn (c)
-                            (= saved*
-                               (cons (fn ()
-                                       (c (dft-node (cdr tree))))
-                                     saved*))
-                            (dft-node (car tree))))))
+;; (def dft-node (tree)
+;;   (if (no tree)         (restart)
+;;       (no (acons tree)) tree
+;;                         (ccc
+;;                           (fn (c)
+;;                             (= saved*
+;;                                (cons (fn ()
+;;                                        (c (dft-node (cdr tree))))
+;;                                      saved*))
+;;                             (dft-node (car tree))))))
 
-(def restart ()
-  (if (no saved*)
-      'done
-      (let cont (car saved*)
-        (= saved* (cdr saved*))
-        (cont))))
+;; (def restart ()
+;;   (if (no saved*)
+;;       'done
+;;       (let cont (car saved*)
+;;         (= saved* (cdr saved*))
+;;         (cont))))
 
-(def dft2 (tree)
-  (= saved* nil)
-  (let node (dft-node tree)
-    (if (is node 'done) nil
-                        (do (pr node)
-                            (restart)))))
+;; (def dft2 (tree)
+;;   (= saved* nil)
+;;   (let node (dft-node tree)
+;;     (if (is node 'done) nil
+;;                         (do (pr node)
+;;                             (restart)))))
 
 
 ; with this code, without continuation, dft2 does not work
@@ -1454,13 +1454,6 @@
 ;;                                saved*))
 ;;                         (dft-node (car tree)))))
 
-;; (def restart ()
-;;   (if (no saved*)
-;;       'done
-;;       (let f (car saved*)
-;;         (= saved* (cdr saved*))
-;;         (f))))
-
 ;(= t1 '(a (b (d h)) (c e (f i) g)))
 ;(= t2 '(1 (2 (3 6 7) 4 5)))
 
@@ -1474,34 +1467,13 @@
   `(fn (cont* ,@parms) ,@body))
 
 
-; ,,@ does not work with parms = nil
-;; (mac =def (name parms . body)
-;;   (let f (sym (+ "=" (string name)))
-;;     `(do
-;;        (mac ,name ,parms
-;;          `(,',f cont* ,,@parms))
-;;        (def ,f (cont* ,@parms) ,@body))))
-
+; ,,@ does not work with parms = nil (unquote take exactly one arg)
 (mac =def (name parms . body)
   (let f (sym (+ "=" (string name)))
     `(do
        (mac ,name ,parms
          (list ',f 'cont* ,@parms))
        (def ,f (cont* ,@parms) ,@body))))
-
-;;   (defmacro once-only ((&rest names) &body body)
-;;     (let ((gensyms (loop for n in names collect (gensym))))
-;;       `(let (,@(loop for g in gensyms collect `(,g (gensym))))
-;;         `(let (,,@(loop for g in gensyms for n in names collect ``(,,g ,,n)))
-;;           ,(let (,@(loop for n in names for g in gensyms collect `(,n ,g)))
-;;              ,@body)))))
-
-;;   (mac once-only (names . body)
-;;     (let gensyms (map1 [uniq] names)
-;;       `(w/uniq ,gensyms
-;;          (list 'with (list ,@(mappend list gensyms names))
-;;            (with ,(mappend list names gensyms)
-;;              ,@body)))))
 
 
 (mac =bind (parms expr . body)
@@ -1517,3 +1489,74 @@
 (mac =apply (f . args)
   `(apply ,f cont* ,@args))
 
+;the same definition works in REPL, and not in ol.arc
+(=def dft-node (tree)
+  (if (no tree)         (restart)
+      (no (acons tree)) (=values tree)
+                        (do
+                          (push (fn () (dft-node (cdr tree)))
+                              saved*)
+                          (dft-node (car tree)))))
+
+(=def restart ()
+  (if saved*
+      ((pop saved*))
+      (=values 'done)))
+
+(=def dft2 (tree)
+  (= saved* nil)
+  (=bind (node) (dft-node tree)
+    (if (is node 'done)
+        (=values nil)
+        (do (pr node)
+            (restart)))))
+
+;this example helped me to understand mapticks in Peter Seibel's
+;with-gensyms
+;; * (let ((n '(a b)))
+;;     (mapticks `(,n (gensym (string ,n))) n))
+;; ((A (GENSYM (STRING A))) (B (GENSYM (STRING B))))
+
+;; * (macroexpand-1 '(mapticks `(,n (gensym (string ,n))) n))
+;; (MAPCAR (LAMBDA (N) `(,N (GENSYM (STRING ,N)))) N)
+;; T
+
+;chap 21
+(= procs* nil)
+(= halt* (uniq))
+
+
+(= default-proc*
+   (list 'proc 
+         nil
+         (fn (x)
+           (pr (eval (read)))
+           (pick-process))
+         nil))
+
+(mac fork (expr pri)
+  `(do1 ',expr
+        (push (list 'proc
+                    nil
+                    (fn (,(uniq))
+                      ,expr
+                      (pick-process))
+                    nil)
+              procs*))
+
+(mac program (name args . body)
+  `(def ,name ,args
+     (= procs* nil)
+     ,@body
+     (catch (loop (pick-process)))))
+
+
+;; * (describe 'catch)
+
+;; CATCH is an external symbol in the COMMON-LISP package.
+;; Special form documentation:
+;;   Catch Tag Form*
+;;   Evaluates Tag and instantiates it as a catcher while the body forms are
+;;   evaluated in an implicit PROGN.  If a THROW is done to Tag within the dynamic
+;;   scope of the body, then control will be transferred to the end of the body
+;;   and the thrown values will be returned.

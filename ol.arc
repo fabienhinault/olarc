@@ -1634,3 +1634,36 @@
 (program ped ()
   (fork (pedestrian) 1))
 
+(= bboard* nil)
+(def claim f
+  (push f bboard*))
+(def unclaim f
+  (pull [iso _ f] bboard*))
+(def check f
+  (find [iso _ f] bboard*))
+
+(def visitor (door)
+  (pr "Approach ")
+  (prn door)
+  (claim 'knock door)
+  (wait (check 'open door))
+  (pr "Enter ")
+  (prn door)
+  (unclaim 'knock door)
+  (claim 'inside door))
+
+(def host (door)
+  (wait (check 'knock door))
+  (pr "Open ")
+  (prn door)
+  (claim 'open door)
+  (wait (check 'inside door))
+  (pr "Close ")
+  (prn door)
+  (unclaim 'open door))
+
+(program ballet ()
+  (fork (visitor 'door1) 1)
+  (fork (host 'door1) 1)
+  (fork (visitor 'door2) 1)
+  (fork (host 'door2) 1))

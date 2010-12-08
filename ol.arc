@@ -1613,7 +1613,7 @@
       (arbitrator nil c))))
 
 (def setpri (n)
-  (= (car proc*) n))
+  (= (proc* 1) n))
 
 (def halt ()
   (halt* nil))
@@ -1667,3 +1667,22 @@
   (fork (host 'door1) 1)
   (fork (visitor 'door2) 1)
   (fork (host 'door2) 1))
+
+(def capture (city)
+  (take city)
+  (setpri 1)
+  (yield)
+  (fortify city))
+
+(def plunder (city)
+  (loot city)
+  (ransom city))
+
+(def  take (c) (prf "Liberating ~A \n\n" c))
+(def fortify (c) (prf "Rebuilding ~A \n\n" c))
+(def loot (c) (pr "Nationalizing ") (prn c))
+(def ransom (c) (pr "Refinancing ") (prn c))
+
+(program barbarians ()
+  (fork (capture 'rome) 100)
+  (fork (plunder 'rome) 98))

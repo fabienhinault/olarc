@@ -1686,3 +1686,92 @@
 (program barbarians ()
   (fork (capture 'rome) 100)
   (fork (plunder 'rome) 98))
+
+;chap22
+
+(= paths* nil)
+(= failsym '@)
+
+(def choose (choices)
+  (if (no choices)
+      (fail)
+      (ccc
+        (fn (c) 
+          (= paths* 
+             (cons (fn () (c (choose (cdr choices))))
+                   paths*))
+          (car choices)))))
+
+(def deffail ()
+  (ccc
+    (fn (c)
+      (= fail 
+         (fn ()
+           (if (no paths*)
+               (c failsym)
+               (let p1 (car paths*)
+                 (= paths* (cdr paths*))
+                 (p1))))))))
+
+(ccc (fn (c) (= testfail (fn () (c failsym)))));same def in REPL works.
+; the continuation of reading a file is not a good one.
+
+(def two-numbers ()
+  (list (choose '(0 1 2 3 4 5))
+        (choose '(0 1 2 3 4 5))))
+(def parlor-trick (n)
+  (let nums (two-numbers)
+    (if (is (apply + nums) n)
+        `(the sum of ,@nums)
+        (fail))))
+
+;dic: maze
+
+(def mark ()
+  (= paths* (cons fail paths*)))
+
+(def prune ()
+  (if (or (no paths*) (is (car paths*) fail))
+      (= paths* (cdr paths*))
+      (do (= paths* (cdr paths*))
+          (cut))))
+
+(def find-boxes()
+  (= paths* nil)
+  (let city (choose '(la ny bos))
+    (mark
+      (prn)
+      (withs (store (choose '(1 2))
+              box   (choose '(1 2))
+              triple (list city store box))
+        (pr triple)
+        (if (coin? triple)
+            (do (cut) (pr 'c)))
+        (fail)))))
+
+(def coin? (x)
+  (mem x '((la 1 2) (ny 1 1) (bos 2 2))))
+
+(def kids (n)
+  (case n
+    a '(b c)
+    b '(d e)
+    c '(d f)
+    f '(g)))
+
+(def descent (n1 n2)
+  (if (is n1 n2)
+      (list n2)
+      (let p (try-paths (kids n1) n2)
+        (if p (cons n1 p) nil))))
+
+(def try-paths (ns n2)
+  (if (no ns)
+      nil
+      (or (descent (car ns) n2)
+          (try-paths (cdr ns) n2))))
+
+(def descent (n1 n2)
+  (if (is n1 n2)    (list n2)
+      (no (kids n1) (fail))
+                    (cons n1 (descent (choose (kids n1)) n2))))

@@ -1734,23 +1734,23 @@
   (if (or (no paths*) (is (car paths*) fail))
       (= paths* (cdr paths*))
       (do (= paths* (cdr paths*))
-          (cut))))
+          (prune))))
 
 (def find-boxes()
   (= paths* nil)
   (let city (choose '(la ny bos))
-    (mark
-      (prn)
-      (withs (store (choose '(1 2))
-              box   (choose '(1 2))
-              triple (list city store box))
-        (pr triple)
-        (if (coin? triple)
-            (do (cut) (pr 'c)))
-        (fail)))))
+    (mark)
+    (prn)
+    (withs (store (choose '(1 2))
+	    box   (choose '(1 2))
+	    triple (list city store box))
+      (pr triple)
+      (if (coin? triple)
+	  (do (prune) (pr 'c)))
+      (fail))))
 
 (def coin? (x)
-  (mem x '((la 1 2) (ny 1 1) (bos 2 2))))
+  (mem [iso _ x] '((la 1 2) (ny 1 1) (bos 2 2))))
 
 (def kids (n)
   (case n
@@ -1772,6 +1772,23 @@
           (try-paths (cdr ns) n2))))
 
 (def descent (n1 n2)
-  (if (is n1 n2)    (list n2)
-      (no (kids n1) (fail))
-                    (cons n1 (descent (choose (kids n1)) n2))))
+  (if (is n1 n2)     (list n2)
+      (no (kids n1)) (fail)
+                     (cons n1 (descent (choose (kids n1)) n2))))
+
+;dico breadth
+
+(def true-choose (choices)
+  (ccc
+    (fn (c)
+      (= paths* 
+	 (append paths* 
+		 (map (fn (choice)
+			(fn () (c choice)))
+		      choices)))
+      (fail))))
+
+;chap 23
+
+;dico spell
+;intelligent-seeming

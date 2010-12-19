@@ -1746,7 +1746,7 @@
               triple (list city store box))
         (pr triple)
         (if (coin? triple)
-            (do (cut) (pr 'c)))
+            (do (prune) (pr 'c)))
         (fail)))))
 
 (def coin? (x)
@@ -1775,3 +1775,60 @@
   (if (is n1 n2)    (list n2)
       (no (kids n1) (fail))
                     (cons n1 (descent (choose (kids n1)) n2))))
+
+;chap 23
+
+;fig 23.3
+
+(mac defnode (name . arcs)
+  `(def ,name (pos regs) (choose ,@arcs)))
+
+(mac down (sub next . cmds)
+  `(let (* pos regs) (,sub pos (cons nil regs))
+     (,next pos ,(compile-cmds cmds))))
+
+(mac cat (cat next . cmds)
+  `(if (is (len sent*) pos)
+       (fail)
+       (let * (sent* pos)
+         (if (mem ',cat (types *))
+             (,next (+ 1 pos) ,(compile-cmds cmds))
+             (fail)))))
+
+(mac jump (next . cmds)
+  `(,next pos ,(compile-cmds cmds)))
+
+(def compile-cmds (cmds)
+  (if (no cmds)
+      'regs
+      '(,@(car cmds) ,(compile-cmds (cdr cmds)))))
+
+(mac up (expr)
+  `(let * (sent* pos)
+     (list ,expr pos (cdr regs))))
+
+(mac getr (key (o regs 'regs))
+  `(let result (cdr (assoc ',key (car ,regs)))
+     (if (cdr result) result car result)))
+
+(mac set-register (key val regs)
+  `(cons (cons (cons ,key ,val) (car ,regs)) (cdr ,regs)))
+
+(mac setr (key val regs)
+  `(set-register ',key (list ,val) ,regs))
+
+(mac pushr (key val regs)
+  `(set-register ',key
+                 (cons ,val (cdr (assoc ',key (car ,regs))))
+                 ,regs))
+
+;fig 23.5
+(mac w/params (node sent . body)
+  (w/uniq (pos regs)
+   `(do
+      (= sent* sent
+         paths* nil)
+      (let (parse ,pos ,regs) (,node O '(nil))
+        (if (is ,pos (len sent*))
+            (do ,@body (fail))
+            (fail))))))

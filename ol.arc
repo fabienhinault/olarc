@@ -1702,6 +1702,27 @@
                    paths*))
           (car choices)))))
 
+(def choosex choices
+  (if (no choices)
+      (fail)
+      (ccc
+        (fn (c) 
+          (= paths* 
+             (cons (fn () (c (apply choosex (cdr choices))))
+                   paths*))
+          (car choices)))))
+
+(mac choosemac choices
+  (if (no choices)
+      '(fail)
+      `(do
+         (ccc
+           (fn (c)
+             (= paths* 
+                (cons (fn () (c (choosemac ,@(cdr choices))))
+                      paths*))
+           ,(car choices))))))
+
 (def deffail ()
   (ccc
     (fn (c)
@@ -1714,7 +1735,14 @@
                  (p1))))))))
 
 (ccc (fn (c) (= testfail (fn () (c failsym)))));same def in REPL works.
-; the continuation of reading a file is not a good one.
+; the continuation of the reading of a file is not a good one.
+
+;; (def fail ()
+;;   (if paths*
+;;       (let p1 (car paths*)
+;;         (= paths* (cdr paths*))
+;;         (p1))
+;;       failsym))
 
 (def two-numbers ()
   (list (choose '(0 1 2 3 4 5))
@@ -1725,8 +1753,8 @@
         `(the sum of ,@nums)
         (fail))))
 
-;dic: maze
-
+;dict: maze
+;dict: hounded p299
 (def mark ()
   (= paths* (cons fail paths*)))
 
@@ -1796,11 +1824,21 @@
 ;fig 23.3
 
 (mac defnode (name . arcs)
-  `(def ,name (pos regs) (choose ,@arcs)))
+  `(def ,name (pos regs) (choosemac ,@arcs)))
 
 (mac down (sub next . cmds)
   `(let (* pos regs) (,sub pos (cons nil regs))
      (,next pos ,(compile-cmds cmds))))
+
+;; (mac cat (cat next . cmds)
+;;   `(if (is (len sent*) pos)
+;;        (fail)
+;;        (let * (sent* pos)
+;;          (if (mem ',cat (types *))
+;;              (,next (+ 1 pos) ,(compile-cmds cmds))
+;;              (fail)))))
+
+; (fail) within a choose always returns @
 
 (mac cat (cat next . cmds)
   `(if (is (len sent*) pos)
@@ -1816,10 +1854,10 @@
 (def compile-cmds (cmds)
   (if (no cmds)
       'regs
-      '(,@(car cmds) ,(compile-cmds (cdr cmds)))))
+      `(,@(car cmds) ,(compile-cmds (cdr cmds)))))
 
 (mac up (expr)
-  `(let * (sent* pos)
+  `(let * (car:nthcdr pos sent*)
      (list ,expr pos (cdr regs))))
 
 (mac getr (key (o regs 'regs))
@@ -1837,13 +1875,138 @@
                  (cons ,val (cdr (assoc ',key (car ,regs))))
                  ,regs))
 
+;; (defnode s
+;;    (cat noun s2
+;;      (setr subj *)))
+
+;; (defnode s2
+;;    (cat verb s3
+;;      (setr v *)))
+
+;; (defnode s3
+;;    (up `(sentence
+;;            (subject ,(getr subj))
+;;            (verb ,(getr v)))))
+
+;; (defnode s
+;;   (down np s/subj
+;;     (setr mood 'decl)
+;;     (setr subj *))
+;;   (cat v v
+;;     (setr mood 'imp)
+;;     (setr subj '(np (pron you)))
+;;     (setr v *)))
+
 ;fig 23.5
-(mac w/params (node sent . body)
+(mac w/parses (node sent . body)
   (w/uniq (pos regs)
    `(do
-      (= sent* sent
+      (= sent* ,sent
          paths* nil)
-      (let (parse ,pos ,regs) (,node O '(nil))
+      (let (parse ,pos ,regs) (,node 0 '(nil))
         (if (is ,pos (len sent*))
             (do ,@body (fail))
             (fail))))))
+
+(def types (word)
+  (if (mem word '(do does did))     '(aux v)
+      (mem word '(time times))      '(n v)
+      (mem word '(fly flies))       '(n v)
+      (mem word '(like))            '(v prep)
+      (mem word '(liked likes))     '(v)
+      (mem word '(a an the))        '(det)
+      (mem word '(arrow arrows))    '(n)
+      (mem word '(i you he she him her it)) '(pron)))
+
+(defnode mods
+   (cat n mods/n
+      (setr mods *)))
+
+(defnode mods/n
+   (cat n mods/n
+      (pushr mods *))
+   (up `(n-group ,(getr mods))))
+
+;; ;fun exercise with continuations
+;; (def lastcont()
+;;   (let tmpc lastcont*
+;;     (ccc
+;;       (fn (c)
+;;         (= lastcont* c)
+;;         (tmpc nil)))))
+
+(defnode np
+  (cat det np/det
+     (setr det *))
+  (jump np/det
+     (setr det nil))
+  (cat pron pron
+     (setr n *)))
+
+(defnode pron
+  (up `(np (pronoun ,(getr n)))))
+
+(defnode np/det
+  (down mods np/mods
+    (setr mods *))
+  (jump np/mods
+    (setr mods nil)))
+
+(defnode np/mods
+  (cat n np/n
+    (setr n *)))
+
+(defnode np/n
+  (up `(np (det ,(getr det))
+           (modifiers ,(getr mods))
+           (noun ,(getr n))))
+  (down pp np/pp
+    (setr pp *)))
+
+(defnode np/pp
+  (up `(np (det ,(getr det))
+           (modifiers ,(getr mods))
+           (noun ,(getr n))
+           ,(getr pp))))
+
+(defnode pp
+  (cat prep pp/prep
+    (setr prep *)))
+
+(defnode pp/prep
+  (down np pp/np
+    (setr op *)))
+
+(defnode pp/np
+  (up `(pp (prep ,(getr prep))
+           (obj ,(getr op)))))
+
+(defnode s
+  (down np s/subj
+    (setr mood 'decl)
+    (setr subj *))
+  (cat v v
+    (setr mood 'imp)
+    (setr subj '(np (pron you)))
+    (setr aux nil)
+    (setr v *)))
+
+(defnode s/subj
+  (cat v v
+    (setr aux nil)
+    (setr v *)))
+
+(defnode v
+  (up `(s (mood ,(getr mood))
+          (subj ,(getr subj))
+          (vcl (aux ,(getr aux))
+               (v ,(getr v)))))
+  (down np s/obj
+    (setr obj *)))
+
+(defnode s/obj
+  (up `(s (mood ,(getr mood))
+          (subj ,(getr subj))
+          (vcl (aux ,(getr aux))
+               (v ,(getr v)))
+          (obj ,(getr obj)))))

@@ -1172,6 +1172,7 @@
          (or (self (cdr it) binds)
              (cdr it))))
    x binds))
+;the book's version returns (values (cdr b) b) we just return (cdr b)
 
 (mac if-match (pat seq then (o else nil))
   `(aif (match ',pat ,seq)
@@ -2010,3 +2011,29 @@
           (vcl (aux ,(getr aux))
                (v ,(getr v)))
           (obj ,(getr obj)))))
+
+;chap 24
+
+(mac w/inference (query . body)
+  `(do
+     (= paths* nil)
+     (let (binds) (prove-query ',(rep_ query) nil)
+	  (let ,(map (fn (v) 
+		       `(,v (fullbind ',v binds)))
+		     (vars-in query atom))
+	    ,@body
+	    (fail)))))
+
+(def rep_ (x)
+  (if (atom x)
+      (if (is x '_) (uniq "?") x)
+      (cons (rep_ (car x)) (rep_ (cdr x)))))
+
+(def fullbind (x b)
+  (if (varsym? x) (aif (binding x b)
+		       (fullbind (cdr it) b)
+		       (uniq))
+      (atom x) x
+               (cons (fullbind (car x) b)
+		     (fullbind (cdr x) b))))
+

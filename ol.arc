@@ -2037,3 +2037,59 @@
                (cons (fullbind (car x) b)
 		     (fullbind (cdr x) b))))
 
+(def prove-query (expr binds)
+  (case (car expr)
+    and  (prove-and (cdr expr) binds)
+    or   (prove-or  (cdr expr) binds)
+    not  (prove-not (cadr expr) binds)
+         (prove-simple expr binds)))
+
+(def prove-and (clauses binds)
+  (if (no clauses)
+      binds
+      (let (binds) (prove-query (car clauses) binds)
+	   (prove-and (cdr clauses) binds))))
+
+(def prove-or (clauses binds)
+  (choose c clauses)
+  (prove-query c binds))
+
+(def prove-not (clauses binds)
+  (let save-paths paths*
+    (= paths* nil)
+    (choosemac (let (b) (prove-query expr binds)
+		    (= paths* save-paths)
+		    (fail))
+	       (do
+		 (= paths* save-paths)
+		 binds))))
+
+(def prove-simple (query binds)
+  (let r (choose rlist*)
+    (implies r query binds)))
+
+(= rlist* nil)
+
+(mac <- (con . ant)
+  (let ant (if (is (len ant) 1)
+	       (car ant)
+	       `(and ,@ant))
+    `(len (++ rlist* (list (rep_ (cons ',ant ',con)))))))
+
+(def implies (r query binds)
+  (let r2 (change-vars r)
+    (aif (match query (cdr r2) binds)
+	 (prove-query (car r2) it)
+	 (fail))))
+
+(def sublis (al tree)
+  (treewise cons [cdr:assoc _ al] tree))
+
+(def change-vars (r)
+  (sublis (map (fn (v) (cons v (uniq '?)))
+	       (vars-in r))
+	  r))
+
+;dict to gaunt
+;dict ravenously
+;dict turpentine

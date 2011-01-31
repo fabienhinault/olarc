@@ -1151,12 +1151,12 @@
 ;fig 18.5
 
 ;convention: t means "matches with no binding"
-;see if annoying to have t in assoc list
+;see if annoying to have t in assoc list (not until now)
 (def match (x y (o binds nil))
   (aif
     (or (is x y) (is x '_) (is y '_)) (or binds t)
-    (binding x binds) (match it y binds)
-    (binding y binds) (match x it binds)
+    (binding x binds) (match (cdr it) y binds)
+    (binding y binds) (match x (cdr it) binds)
     (varsym? x) (cons (cons x y) binds)
     (varsym? y) (cons (cons y x) binds)
     (and (acons x)(acons y)(match (car x) (car y) binds))
@@ -1164,19 +1164,20 @@
      nil))
 
 (def varsym? (x)
-  (and x (isa x 'sym) (is ((stringify x) 0) #\?)))
+  (and x (isa x 'sym) (is ((string x) 0) #\?)))
 
 (def binding (x binds)
   ((afn (x binds)
     (aif (assoc x binds)
          (or (self (cdr it) binds)
-             (cdr it))))
+             it)))
    x binds))
-;the book's version returns (values (cdr b) b) we just return (cdr b)
+;the book's version returns (values (cdr b) b) we just return b because
+; (cdr b) can be nil
 
 (mac if-match (pat seq then (o else nil))
   `(aif (match ',pat ,seq)
-        (withs ,(mappend (fn (v) `(,v (binding ',v it)))
+        (withs ,(mappend (fn (v) `(,v (cdr:binding ',v it)))
                    (vars-in then atom))
             ,then)
         ,else))
@@ -1322,7 +1323,7 @@
   (w/uniq binds
     `(each ,binds (interpret-query ',query)
        (withs ,(mappend (fn (v)
-                      `(,v (binding ',v ,binds)))
+                      `(,v (cdr:binding ',v ,binds)))
                     (vars-in query atom))
          ,@body))))
 
@@ -2017,10 +2018,10 @@
 (mac w/inference (query . body)
   `(do
      (= paths* nil)
-     (let (binds) (prove-query ',(rep_ query) nil)
-	  (let ,(map (fn (v) 
+     (let binds (prove-query ',(rep_ query) nil)
+	  (withs ,(mappend (fn (v) 
 		       `(,v (fullbind ',v binds)))
-		     (vars-in query atom))
+		     (vars-in query))
 	    ,@body
 	    (fail)))))
 
@@ -2047,17 +2048,17 @@
 (def prove-and (clauses binds)
   (if (no clauses)
       binds
-      (let (binds) (prove-query (car clauses) binds)
+      (let binds (prove-query (car clauses) binds)
 	   (prove-and (cdr clauses) binds))))
 
 (def prove-or (clauses binds)
-  (choose c clauses)
-  (prove-query c binds))
+  (let c (choose clauses)
+    (prove-query c binds)))
 
 (def prove-not (clauses binds)
   (let save-paths paths*
     (= paths* nil)
-    (choosemac (let (b) (prove-query expr binds)
+    (choosemac (let b (prove-query expr binds)
 		    (= paths* save-paths)
 		    (fail))
 	       (do
@@ -2083,7 +2084,7 @@
 	 (fail))))
 
 (def sublis (al tree)
-  (treewise cons [cdr:assoc _ al] tree))
+  (treewise cons [aif (assoc _ al) (cdr it) _] tree))
 
 (def change-vars (r)
   (sublis (map (fn (v) (cons v (uniq '?)))
@@ -2093,3 +2094,89 @@
 ;dict to gaunt
 ;dict ravenously
 ;dict turpentine
+
+(<- (painter ?x) (hungry ?x) (smells-of ?x turpentine))
+(<- (hungry ?x) (or (gaunt ?x) (eats-ravenously ?x)))
+(<- (gaunt raoul))
+(<- (smells-of raoul turpentine))
+(<- (painter rubens))
+
+(mac w/inference (query . body)
+  (withs (vars (vars-in query simple?)
+          gb (uniq))
+    `(w/uniq ,vars
+       (= paths* nil)
+       (let ,gb ,(gen-query (rep_ query))
+         (withs ,(mappend (fn `(,v (fullbind ,v ,gb)))
+                          vars)
+           ,@body)
+         (fail)))))
+
+(= varsym? uniq?)
+
+(def gen-query (expr (o binds nil))
+  (case (car expr)
+    and (gen-and (cdr expr) binds)
+    or  (gen-or  (cdr expr) binds)
+    not (gen-not (cadr expr) binds)
+        `(prove (list ',(car expr)
+                      ,@(map form (cdr expr)))
+                ,binds)))
+
+(def gen-and (clauses binds)
+  (if (no clauses)
+      binds
+      (w/uniq gb
+        (let ,gb ,(gen-query (car clauses) binds)
+          ,(gen-and (cdr clauses) gb)))))
+(def gen-or (clauses binds)
+  `(choose
+     (,@map (fn (c) (gen-query c binds))
+            clauses)))
+(def gen-not (expr binds)
+  (w/uniq gpaths
+    `(let ,gpaths paths*
+       (= paths* nil)
+       (choose-mac
+         (let b ,(gen-query expr binds)
+           (= paths* ,gpaths)
+           (fail))
+         (do
+           (= paths* ,gpaths)
+           binds)))))
+
+(def prove (query binds)
+  (let r (choose rules*)
+    (r query binds)))
+
+(def pform (pat)
+  (if (simple? pat)
+      pat
+      `(cons ,(pform (car pat)) ,(pform (cdr pat)))))
+
+(= rules* nil)
+
+(mac <- (con . ant)
+  (let ant (if (is (len ant) 1)
+               (car ant)
+               `(and ,@ant))
+    `(len (++ rules* (list ,(rule-fn (rep_ ant) (rep_ con)))))))
+
+(def rule-fn (ant con)
+  (w/uniq (val fact binds)
+    `(fn (,fact ,binds)
+       (w/uniq ,(vars-in (list ant con) simple?)
+         (let ,val
+             (match ,fact
+                    (list ',(car con)
+                          ,@(map pform (cdr con)))
+                    ,binds)
+           (if ,val
+               ,(gen-query ant val)
+               (fail)))))))
+
+;; (<- (painter ?x) (hungry ?x) (smells-of ?x turpentine))
+;; (<- (hungry ?x) (or (gaunt ?x) (eats-ravenously ?x)))
+;; (<- (gaunt raoul))
+;; (<- (smells-of raoul turpentine))
+;; (<- (painter rubens))

@@ -2107,7 +2107,7 @@
     `(w/uniq ,vars
        (= paths* nil)
        (let ,gb ,(gen-query (rep_ query))
-         (withs ,(mappend (fn `(,v (fullbind ,v ,gb)))
+         (withs ,(mappend (fn (v) `(,v (fullbind ,v ,gb)))
                           vars)
            ,@body)
          (fail)))))
@@ -2120,24 +2120,24 @@
     or  (gen-or  (cdr expr) binds)
     not (gen-not (cadr expr) binds)
         `(prove (list ',(car expr)
-                      ,@(map form (cdr expr)))
+                      ,@(map pform (cdr expr)))
                 ,binds)))
 
 (def gen-and (clauses binds)
   (if (no clauses)
       binds
       (w/uniq gb
-        (let ,gb ,(gen-query (car clauses) binds)
-          ,(gen-and (cdr clauses) gb)))))
+        `(let ,gb ,(gen-query (car clauses) binds)
+           ,(gen-and (cdr clauses) gb)))))
 (def gen-or (clauses binds)
-  `(choose
-     (,@map (fn (c) (gen-query c binds))
+  `(choosemac
+     ,@(map (fn (c) (gen-query c binds))
             clauses)))
 (def gen-not (expr binds)
   (w/uniq gpaths
     `(let ,gpaths paths*
        (= paths* nil)
-       (choose-mac
+       (choosemac
          (let b ,(gen-query expr binds)
            (= paths* ,gpaths)
            (fail))
@@ -2175,8 +2175,30 @@
                ,(gen-query ant val)
                (fail)))))))
 
-;; (<- (painter ?x) (hungry ?x) (smells-of ?x turpentine))
-;; (<- (hungry ?x) (or (gaunt ?x) (eats-ravenously ?x)))
-;; (<- (gaunt raoul))
-;; (<- (smells-of raoul turpentine))
-;; (<- (painter rubens))
+(<- (painter ?x) (hungry ?x) (smells-of ?x 'turpentine))
+(<- (hungry ?x) (or (gaunt ?x) (eats-ravenously ?x)))
+(<- (gaunt 'raoul))
+(<- (smells-of 'raoul 'turpentine))
+(<- (painter 'rubens))
+
+;; arc> (w/inference (append ?x '(c d) '(a b c d)))
+;;   C-c C-cuser break
+
+;;  === context ===
+;;  reclist
+;;  map
+;;  string
+;;  uniq?
+;;  fullbind
+;;  fullbind
+;;  fullbind
+;;  fullbind
+;;  fullbind
+;;  fullbind
+;;  fullbind
+;;  fullbind
+;;  fullbind
+;;  fullbind
+;;  fullbind
+;;  fullbind
+;; ...

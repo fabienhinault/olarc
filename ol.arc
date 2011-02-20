@@ -1163,6 +1163,11 @@
         (match (cdr x) (cdr y) it)
      nil))
 
+;(match '(p a b c a) '(p ?x ?y c ?x))
+;((?y . b) (?x . a) . t)
+;; arc> (match '(p ?x b ?y a) '(p ?y b c a))
+;; ((?y . c) (?x . ?y) . t)
+
 (def varsym? (x)
   (and x (isa x 'sym) (is ((string x) 0) #\?)))
 
@@ -1175,6 +1180,12 @@
 ;the book's version returns (values (cdr b) b) we just return b because
 ; (cdr b) can be nil
 
+;; arc> (binding '?x '((?y . c) (?x . ?y) . t))
+;; (?y . c)
+
+
+
+; pattern matching version of dbind
 (mac if-match (pat seq then (o else nil))
   `(aif (match ',pat ,seq)
         (withs ,(mappend (fn (v) `(,v (cdr:binding ',v it)))
@@ -1240,7 +1251,7 @@
   (or (alist x) (isa x 'table) (isa x 'string)))
 
 (def uniq? (s)
-  (and (isa s 'sym) (no (is s (sym (string s))))))
+  (and s (isa s 'sym) (no (is s (sym (string s))))))
 
 (def cdar (x)
   (cdr:car x))
@@ -2015,7 +2026,7 @@
 
 ;chap 24
 
-(mac w/inference (query . body)
+(mac w/inference_i (query . body)
   `(do
      (= paths* nil)
      (let binds (prove-query ',(rep_ query) nil)
@@ -2071,7 +2082,7 @@
 
 (= rlist* nil)
 
-(mac <- (con . ant)
+(mac <-i (con . ant)
   (let ant (if (is (len ant) 1)
 	       (car ant)
 	       `(and ,@ant))
@@ -2095,11 +2106,13 @@
 ;dict ravenously
 ;dict turpentine
 
-(<- (painter ?x) (hungry ?x) (smells-of ?x turpentine))
-(<- (hungry ?x) (or (gaunt ?x) (eats-ravenously ?x)))
-(<- (gaunt raoul))
-(<- (smells-of raoul turpentine))
-(<- (painter rubens))
+(<-i (painter ?x) (hungry ?x) (smells-of ?x turpentine))
+(<-i (hungry ?x) (or (gaunt ?x) (eats-ravenously ?x)))
+(<-i (gaunt raoul))
+(<-i (smells-of raoul turpentine))
+(<-i (painter rubens))
+(<-i (append nil ?xs ?xs))
+(<-i (append (?x . ?xs) ?ys (?x . ?zs)) (append ?xs ?ys ?zs))
 
 (mac w/inference (query . body)
   (withs (vars (vars-in query simple?)
@@ -2172,7 +2185,7 @@
                           ,@(map pform (cdr con)))
                     ,binds)
            (if ,val
-               ,(gen-query ant val)
+                 ,(gen-query ant val)
                (fail)))))))
 
 (<- (painter ?x) (hungry ?x) (smells-of ?x 'turpentine))
@@ -2181,24 +2194,78 @@
 (<- (smells-of 'raoul 'turpentine))
 (<- (painter 'rubens))
 
-;; arc> (w/inference (append ?x '(c d) '(a b c d)))
-;;   C-c C-cuser break
+(def rule-fn (ant con)
+  (w/uniq (val fact binds paths)
+    `(fn (,fact ,binds ,paths)
+       (w/uniq ,(vars-in (list ant con) simple?)
+         (let ,val
+             (match ,fact
+                    (list ',(car con)
+                          ,@(map pform (cdr con)))
+                    ,binds)
+           (if ,val
+                 ,(gen-query ant val paths)
+               (fail)))))))
 
-;;  === context ===
-;;  reclist
-;;  map
-;;  string
-;;  uniq?
-;;  fullbind
-;;  fullbind
-;;  fullbind
-;;  fullbind
-;;  fullbind
-;;  fullbind
-;;  fullbind
-;;  fullbind
-;;  fullbind
-;;  fullbind
-;;  fullbind
-;;  fullbind
-;; ...
+(mac w/inference (query . body)
+  (w/uniq gb
+    (let vars (vars-in query simple?)
+      `(w/uniq ,vars
+         (= paths* nil)
+         (let ,gb ,(gen-query (rep_ query) nil 'paths*)
+           (withs ,(mappend (fn (v) `(,v (fullbind ,v ,gb)))
+                            vars)
+             ,@body)
+           (fail))))))
+
+(def gen-query (expr binds paths)
+  (case (car expr)
+    and (gen-and (cdr expr) binds paths)
+    or  (gen-or  (cdr expr) binds paths)
+    not (gen-not (cadr expr) binds paths)
+    lisp (gen-lisp (cadr expr) binds)
+    is   (gen-is (cadr expr) (expr 2) binds)
+         `(prove (list ',(car expr)
+                       ,@(map pform (cdr expr)))
+                 ,binds paths*)))
+
+(der prove (query binds paths)
+     (let r (choose rules*)
+       (r query binds paths)))
+
+(def gen-and (clauses binds paths)
+  (if (no clauses)
+      binds
+      (w/uniq gb
+        `(let ,gb ,(gen-query (car clauses) binds paths)
+           ,(gen-and (cdr clauses) gb)))))
+(def gen-or (clauses binds paths)
+  `(choosemac
+     ,@(map (fn (c) (gen-query c binds paths))
+            clauses)))
+(def gen-not (expr binds paths)
+  (w/uniq gpaths
+    `(let ,gpaths paths*
+       (= paths* nil)
+       (choosemac
+         (let b ,(gen-query expr binds paths)
+           (= paths* ,gpaths)
+           (fail))
+         (do
+           (= paths* ,gpaths)
+           binds)))))
+
+(mac w/binds (binds expr)
+  `(withs ,(mappend (fn (v) `(,v (fullbind ,v ,binds)))
+                    (vars-in expr))
+     ,expr))
+
+(def gen-lisp (expr binds)
+  `(if (w/binds ,binds ,expr)
+       ,binds
+       (fail)))
+
+(def gen-is (expr1 expr2 binds)
+  `(aif (match ,expr1 (w/binds ,binds ,expr2) ,binds)
+        it
+        (fail)))

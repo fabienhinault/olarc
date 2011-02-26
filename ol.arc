@@ -2188,11 +2188,6 @@
                  ,(gen-query ant val)
                (fail)))))))
 
-(<- (painter ?x) (hungry ?x) (smells-of ?x 'turpentine))
-(<- (hungry ?x) (or (gaunt ?x) (eats-ravenously ?x)))
-(<- (gaunt 'raoul))
-(<- (smells-of 'raoul 'turpentine))
-(<- (painter 'rubens))
 
 (def rule-fn (ant con)
   (w/uniq (val fact binds paths)
@@ -2220,16 +2215,18 @@
 
 (def gen-query (expr binds paths)
   (case (car expr)
-    and (gen-and (cdr expr) binds paths)
-    or  (gen-or  (cdr expr) binds paths)
-    not (gen-not (cadr expr) binds paths)
+    and  (gen-and (cdr expr) binds paths)
+    or   (gen-or  (cdr expr) binds paths)
+    not  (gen-not (cadr expr) binds paths)
     lisp (gen-lisp (cadr expr) binds)
     is   (gen-is (cadr expr) (expr 2) binds)
+    cut  `(do (= paths* ,paths)
+	      ,binds)
          `(prove (list ',(car expr)
                        ,@(map pform (cdr expr)))
                  ,binds paths*)))
 
-(der prove (query binds paths)
+(def prove (query binds paths)
      (let r (choose rules*)
        (r query binds paths)))
 
@@ -2238,7 +2235,7 @@
       binds
       (w/uniq gb
         `(let ,gb ,(gen-query (car clauses) binds paths)
-           ,(gen-and (cdr clauses) gb)))))
+           ,(gen-and (cdr clauses) gb paths)))))
 (def gen-or (clauses binds paths)
   `(choosemac
      ,@(map (fn (c) (gen-query c binds paths))
@@ -2269,3 +2266,9 @@
   `(aif (match ,expr1 (w/binds ,binds ,expr2) ,binds)
         it
         (fail)))
+
+(<- (painter ?x) (hungry ?x) (smells-of ?x 'turpentine))
+(<- (hungry ?x) (or (gaunt ?x) (eats-ravenously ?x)))
+(<- (gaunt 'raoul))
+(<- (smells-of 'raoul 'turpentine))
+(<- (painter 'rubens))

@@ -2272,6 +2272,7 @@
 (<- (gaunt 'raoul))
 (<- (smells-of 'raoul 'turpentine))
 (<- (painter 'rubens))
+
 (<- (factorial 0 1))
 (<- (factorial ?n ?f)
     (lisp (> ?n 0))
@@ -2281,7 +2282,7 @@
 
 (<- (append nil ?ys ?ys))
 (<- (append (?x . ?xs) ?ys (?x . ?zs))
-    (appens ?xs ?ys ?zs))
+    (append ?xs ?ys ?zs))
 
 (<- (quicksort (?x . ?xs) ?ys)
     (partition ?xs ?x ?littles ?bigs)
@@ -2290,10 +2291,10 @@
     (append ?ls (?x . ?bs) ?ys))
 (<- (quicksort nil nil))
 
-(<- (partition (?x . ?xs) ?ys (?x . ?ls) ?bs)
+(<- (partition (?x . ?xs) ?y (?x . ?ls) ?bs)
     (lisp (<= ?x ?y))
     (partition ?xs ?y ?ls ?bs))
-(<- (partition (?x . ?xs) ?ys ?ls (?x . ?bs))
+(<- (partition (?x . ?xs) ?y ?ls (?x . ?bs))
     (lisp (> ?x ?y))
     (partition ?xs ?y ?ls ?bs))
 (<- (partition nil ?y nil nil))
@@ -2312,40 +2313,40 @@
 
 ;chap 25
 
-(def rget (obj prop)
-  (some [_ prop] (get-ancestors obj)))
+;; (def rget (obj prop)
+;;   (some [_ prop] (get-ancestors obj)))
 
-(def get-ancestors (obj)
-  (sort
-    (fn (x y)(mem y (x 'parents)))
-    (dedup
-      ((afn (x)
-         (++ (list x)
-             (mappend self (x 'parents))))
-       obj))))
+;; (def get-ancestors (obj)
+;;   (sort
+;;     (fn (x y)(mem y (x 'parents)))
+;;     (dedup
+;;       ((afn (x)
+;;          (++ (list x)
+;;              (mappend self (x 'parents))))
+;;        obj))))
 
-(def obj parents
-  (let obj (table)
-    (= (obj 'parents) parents)
-    (ancestors obj)
-    obj))
-(def ancestors (obj)
-  (or (obj 'ancestors)
-      (= (obj 'ancestors) (get-ancestors obj))))
-(def rget (obj prop)
-  (some [_ prop] (ancestors obj)))
+;; (def obj parents
+;;   (let obj (table)
+;;     (= (obj 'parents) parents)
+;;     (ancestors obj)
+;;     obj))
+;; (def ancestors (obj)
+;;   (or (obj 'ancestors)
+;;       (= (obj 'ancestors) (get-ancestors obj))))
+;; (def rget (obj prop)
+;;   (some [_ prop] (ancestors obj)))
 
-(mac defprop (name (o meth?))
-  `(do
-     (def ,name (obj . args)
-       ,(if meth?
-            `(run-methods obj ',name args)
-            `(rget obj ',name)))
-     (defset ,name (obj) (val)
-        `(= (,obj ',',name) ,val))))
+;; (mac defprop (name (o meth?))
+;;   `(do
+;;      (def ,name (obj . args)
+;;        ,(if meth?
+;;             `(run-methods obj ',name args)
+;;             `(rget obj ',name)))
+;;      (defset ,name (obj) (val)
+;;         `(= (,obj ',',name) ,val))))
 
-(def run-methods (obj name args)
-  (let meth (rget obj name)
-    (if meth
-        (apply meth obj args)
-        (error "No method"))))
+;; (def run-methods (obj name args)
+;;   (let meth (rget obj name)
+;;     (if meth
+;;         (apply meth obj args)
+;;         (error "No method"))))

@@ -2220,8 +2220,12 @@
     not  (gen-not (cadr expr) binds paths)
     lisp (gen-lisp (cadr expr) binds)
     is   (gen-is (cadr expr) (expr 2) binds)
+<<<<<<< HEAD
+    cut  
+=======
     cut  `(do (= paths* ,paths)
 	      ,binds)
+>>>>>>> origin/master
          `(prove (list ',(car expr)
                        ,@(map pform (cdr expr)))
                  ,binds paths*)))
@@ -2267,11 +2271,7 @@
         it
         (fail)))
 
-(<- (painter ?x) (hungry ?x) (smells-of ?x 'turpentine))
-(<- (hungry ?x) (or (gaunt ?x) (eats-ravenously ?x)))
-(<- (gaunt 'raoul))
-(<- (smells-of 'raoul 'turpentine))
-(<- (painter 'rubens))
+<<<<<<< HEAD
 (<- (factorial 0 1))
 (<- (factorial ?n ?f)
     (lisp (> ?n 0))
@@ -2349,3 +2349,10 @@
     (if meth
         (apply meth obj args)
         (error "No method"))))
+=======
+(<- (painter ?x) (hungry ?x) (smells-of ?x 'turpentine))
+(<- (hungry ?x) (or (gaunt ?x) (eats-ravenously ?x)))
+(<- (gaunt 'raoul))
+(<- (smells-of 'raoul 'turpentine))
+(<- (painter 'rubens))
+>>>>>>> origin/master

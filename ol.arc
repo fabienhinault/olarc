@@ -2225,6 +2225,7 @@
     not (gen-not (cadr expr) binds paths)
     lisp (gen-lisp (cadr expr) binds)
     is   (gen-is (cadr expr) (expr 2) binds)
+    cut  
          `(prove (list ',(car expr)
                        ,@(map pform (cdr expr)))
                  ,binds paths*)))
@@ -2238,7 +2239,7 @@
       binds
       (w/uniq gb
         `(let ,gb ,(gen-query (car clauses) binds paths)
-           ,(gen-and (cdr clauses) gb)))))
+           ,(gen-and (cdr clauses) gb paths)))))
 (def gen-or (clauses binds paths)
   `(choosemac
      ,@(map (fn (c) (gen-query c binds paths))
@@ -2269,3 +2270,81 @@
   `(aif (match ,expr1 (w/binds ,binds ,expr2) ,binds)
         it
         (fail)))
+
+(<- (factorial 0 1))
+(<- (factorial ?n ?f)
+    (lisp (> ?n 0))
+    (is ?n1 (- ?n 1))
+    (factorial ?n1 ?f1)
+    (is ?f (* ?n ?f1)))
+
+(<- (append nil ?ys ?ys))
+(<- (append (?x . ?xs) ?ys (?x . ?zs))
+    (appens ?xs ?ys ?zs))
+
+(<- (quicksort (?x . ?xs) ?ys)
+    (partition ?xs ?x ?littles ?bigs)
+    (quicksort ?littles ?ls)
+    (quicksort ?bigs ?bs)
+    (append ?ls (?x . ?bs) ?ys))
+(<- (quicksort nil nil))
+
+(<- (partition (?x . ?xs) ?ys (?x . ?ls) ?bs)
+    (lisp (<= ?x ?y))
+    (partition ?xs ?y ?ls ?bs))
+(<- (partition (?x . ?xs) ?ys ?ls (?x . ?bs))
+    (lisp (> ?x ?y))
+    (partition ?xs ?y ?ls ?bs))
+(<- (partition nil ?y nil nil))
+
+(<- (echo)
+    (is ?x (read))
+    (echo ?x))
+(<- (echo 'done)
+    (cut))
+(<- (echo ?x)
+    (lisp (do1 t (prn ?x)))
+    (is ?y (read))
+    (cut)
+    (echo ?y))
+
+
+;chap 25
+
+(def rget (obj prop)
+  (some [_ prop] (get-ancestors obj)))
+
+(def get-ancestors (obj)
+  (sort
+    (fn (x y)(mem y (x 'parents)))
+    (dedup
+      ((afn (x)
+         (++ (list x)
+             (mappend self (x 'parents))))
+       obj))))
+
+(def obj parents
+  (let obj (table)
+    (= (obj 'parents) parents)
+    (ancestors obj)
+    obj))
+(def ancestors (obj)
+  (or (obj 'ancestors)
+      (= (obj 'ancestors) (get-ancestors obj))))
+(def rget (obj prop)
+  (some [_ prop] (ancestors obj)))
+
+(mac defprop (name (o meth?))
+  `(do
+     (def ,name (obj . args)
+       ,(if meth?
+            `(run-methods obj ',name args)
+            `(rget obj ',name)))
+     (defset ,name (obj) (val)
+        `(= (,obj ',',name) ,val))))
+
+(def run-methods (obj name args)
+  (let meth (rget obj name)
+    (if meth
+        (apply meth obj args)
+        (error "No method"))))

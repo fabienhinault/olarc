@@ -2313,40 +2313,141 @@
 
 ;chap 25
 
-;; (def rget (obj prop)
-;;   (some [_ prop] (get-ancestors obj)))
+(def rget (object prop)
+  (some [_ prop] (get-ancestors object)))
 
-;; (def get-ancestors (obj)
-;;   (sort
-;;     (fn (x y)(mem y (x 'parents)))
-;;     (dedup
-;;       ((afn (x)
-;;          (++ (list x)
-;;              (mappend self (x 'parents))))
-;;        obj))))
+(def get-ancestors (object)
+  (sort
+    (fn (x y)(mem y (x 'parents)))
+    (dedup
+      ((afn (x)
+         (+ (list x)
+             (mappend self (x 'parents))))
+       object))))
 
-;; (def obj parents
-;;   (let obj (table)
-;;     (= (obj 'parents) parents)
-;;     (ancestors obj)
-;;     obj))
-;; (def ancestors (obj)
-;;   (or (obj 'ancestors)
-;;       (= (obj 'ancestors) (get-ancestors obj))))
-;; (def rget (obj prop)
-;;   (some [_ prop] (ancestors obj)))
+;obj is already a macro in arc
+(def defobj parents
+  (let object (table)
+    (= (object 'parents) parents)
+;    (ancestors object)
+    object))
 
-;; (mac defprop (name (o meth?))
-;;   `(do
-;;      (def ,name (obj . args)
-;;        ,(if meth?
-;;             `(run-methods obj ',name args)
-;;             `(rget obj ',name)))
-;;      (defset ,name (obj) (val)
-;;         `(= (,obj ',',name) ,val))))
+;; (def ancestors (object)
+;;   (or (object 'ancestors)
+;;       (= (object 'ancestors) (get-ancestors object))))
 
-;; (def run-methods (obj name args)
-;;   (let meth (rget obj name)
-;;     (if meth
-;;         (apply meth obj args)
-;;         (error "No method"))))
+;arc cannot print an object with such a definition, because it contains
+;a list which contains the object. Such loops are not detected before to
+;print.
+
+
+;; (def rget (object prop)
+;;   (some [_ prop] (ancestors object)))
+
+(mac defprop (name (o meth?))
+  `(do
+     (def ,name (object . args)
+       ,(if meth?
+            `(run-methods object ',name args)
+            `(rget object ',name)))
+     (defset ,name (object)
+       (w/uniq g
+         (list (list g object)
+               `(,,name ,g)
+               `(fn (val)(= (,object ',',name) val)))))))
+
+(def run-methods (object name args)
+  (let meth (rget object name)
+    (if meth
+        (apply meth object args)
+        (error "No method"))))
+
+(mac meth- (field meth)
+  (w/uniq gmeth
+    `(let ,gmeth ,meth
+       (,gmeth ,field))))
+
+(def run-methods (obj name args)
+  (let pri (rget obj name 'primary)
+    (if pri
+        (let ar (rget obj name 'around)
+          (if ar
+              (apply ar obj name)
+              (run-core-methods obj name args pri)))
+        (error "No primary ~A method for ~A." name obj))))
+
+(def run-core-methods (obj name args (o pri))
+  (do1
+    (do
+      (run-befores obj name args)
+      (apply (or pri (rget obj name 'primary))
+                 obj args))
+    (run-afters obj name args)))
+
+(def rget (obj prop (o meth) (o skip 0))
+  (some (fn (a)
+          (let val (a prop)
+            (if val
+                (case meth
+                  around    (meth- around val)
+                  primary   (meth- primary val)
+                            val))))
+        (nthcdr skip (get-ancestors obj))))
+
+(def run-befores (obj prop args)
+  (each a (get-ancestors obj)
+    (let bm (meth- before (a prop))
+      (if bm (apply bm obj args)))))
+
+(def run-afters (obj prop args)
+  ((afn (lst)
+     (when lst
+       (self (cdr lst))
+       (let am (meth- after ((car lst) prop))
+         (if am (apply am (car lst) args)))))
+   (get-ancestors obj)))
+
+(def meth? (x)
+  (and (is x 'table) (x 'primary)))
+
+(mac defmeth ((name (o type 'primary)) obj parms . body)
+  (w/uniq gobj
+    `(let ,gobj ,obj
+       (defprop ,name t)
+       (unless (meth? (,gobj ',name))
+         (= (,gobj ',name) (table)))
+       (= ((,gobj ',name) ,type)
+          ,(build-meth name type gobj parms body)))))
+
+(def build-meth (name type gobj parms body)
+  (w/uniq gargs
+    `(fn ,gargs
+       (withs 
+           (call-next (fn ()
+                       ,(if (or (is type 'primary)
+                                (is type 'around))
+                            `(cmn ,gobj ',name (cdr ,gargs) ,type)
+                            '(error "Illegal call-next.")))
+            next-p (fn ()
+                    ,(case type
+                       'around
+                       `(or (rget ,gobj ',name 'around 1)
+                            (rget ,gobj ',name 'primary))
+                       'primary
+                       `(rget ,gobj ',name 'primary 1)
+                       nil)))
+         (apply (fn ,parms ,@body) ,gargs)))))
+
+(def cnm (obj name args type)
+  (case type
+    'around (let ar (rget obj name 'around 1)
+               (if ar
+                   (apply ar obj args)
+                   (run-core-methods obj name args)))
+    'primary (let pri (rget obj name 'primary 1)
+               (if pri
+                   (apply pri obj args)
+                   (error "No next method.")))))
+
+(mac undefmeth ((name (o type 'primary)) obj)
+  `(= ((,gobj ',name) ,type) nil))

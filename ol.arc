@@ -1,5 +1,12 @@
 ;-*-arc-*-
 
+;chap 2
+;p 16
+; get
+;;  Look on the property list of SYMBOL for the specified INDICATOR.  If this
+;;  is found, return the associated value, else return DEFAULT.
+; http://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node108.html
+
 ;chap 4
 ;fig 4.1
 (def mklist (x)
@@ -7,7 +14,7 @@
 
 ;fig 4.2
 (def group (source n)
-  (when (is 0 n)(error "zero length"))
+  (when (is 0 n)(err "zero length"))
   (if (no source)
       nil
       ((afn (source acc)
@@ -675,7 +682,7 @@
   (with (key (car cl) rest (cdr cl))
     (if (acons key)  '((in ,g ,key) ,@rest)
         (inq key t otherwise) ,@rest
-        (error "bad >case clause"))))
+        (err "bad >case clause"))))
 
 (mac do-tuples/o (parms source . body)
   (if parms
@@ -2360,7 +2367,7 @@
   (let meth (rget object name)
     (if meth
         (apply meth object args)
-        (error "No method"))))
+        (err "No method"))))
 
 (mac meth- (field meth)
   (w/uniq gmeth
@@ -2372,16 +2379,16 @@
     (if pri
         (let ar (rget obj name 'around)
           (if ar
-              (apply ar obj name)
+              (apply ar obj args)
               (run-core-methods obj name args pri)))
-        (error "No primary ~A method for ~A." name obj))))
+        (err "No primary " name " method for " obj))))
 
 (def run-core-methods (obj name args (o pri))
   (do1
     (do
       (run-befores obj name args)
       (apply (or pri (rget obj name 'primary))
-                 obj args))
+             obj args))
     (run-afters obj name args)))
 
 (def rget (obj prop (o meth) (o skip 0))
@@ -2389,26 +2396,30 @@
           (let val (a prop)
             (if val
                 (case meth
-                  around    (meth- around val)
-                  primary   (meth- primary val)
+                  around    (meth- 'around val)
+                  primary   (meth- 'primary val)
                             val))))
         (nthcdr skip (get-ancestors obj))))
 
 (def run-befores (obj prop args)
   (each a (get-ancestors obj)
-    (let bm (meth- before (a prop))
-      (if bm (apply bm obj args)))))
+    (aif (a prop)
+         (aif (it 'before)
+              (apply it obj args)))))
 
 (def run-afters (obj prop args)
   ((afn (lst)
      (when lst
        (self (cdr lst))
-       (let am (meth- after ((car lst) prop))
-         (if am (apply am (car lst) args)))))
+       (aif ((car lst) prop)
+            (aif (it 'after)
+                 (apply it (car lst) args)))))
    (get-ancestors obj)))
 
 (def meth? (x)
-  (and (is x 'table) (x 'primary)))
+  (and (isa x 'table) 
+       (all [or (is _ 'primary) (is _ 'before) (is _ 'after) (is _ 'around)]
+            (keys x))))
 
 (mac defmeth ((name (o type 'primary)) obj parms . body)
   (w/uniq gobj
@@ -2416,7 +2427,7 @@
        (defprop ,name t)
        (unless (meth? (,gobj ',name))
          (= (,gobj ',name) (table)))
-       (= ((,gobj ',name) ,type)
+       (= ((,gobj ',name) ',type)
           ,(build-meth name type gobj parms body)))))
 
 (def build-meth (name type gobj parms body)
@@ -2426,28 +2437,117 @@
            (call-next (fn ()
                        ,(if (or (is type 'primary)
                                 (is type 'around))
-                            `(cmn ,gobj ',name (cdr ,gargs) ,type)
-                            '(error "Illegal call-next.")))
+                            `(cnm ,gobj ',name (cdr ,gargs) ',type)
+                            '(err "Illegal call-next.")))
             next-p (fn ()
                     ,(case type
-                       'around
-                       `(or (rget ,gobj ',name 'around 1)
-                            (rget ,gobj ',name 'primary))
-                       'primary
-                       `(rget ,gobj ',name 'primary 1)
-                       nil)))
+                       around
+                          `(or (rget ,gobj ',name 'around 1)
+                               (rget ,gobj ',name 'primary))
+                       primary
+                           `(rget ,gobj ',name 'primary 1)
+                           nil)))
          (apply (fn ,parms ,@body) ,gargs)))))
 
 (def cnm (obj name args type)
   (case type
-    'around (let ar (rget obj name 'around 1)
+    around (let ar (rget obj name 'around 1)
                (if ar
                    (apply ar obj args)
                    (run-core-methods obj name args)))
-    'primary (let pri (rget obj name 'primary 1)
+    primary (let pri (rget obj name 'primary 1)
                (if pri
                    (apply pri obj args)
-                   (error "No next method.")))))
+                   (err "No next method.")))))
 
 (mac undefmeth ((name (o type 'primary)) obj)
-  `(= ((,gobj ',name) ,type) nil))
+  `(= ((,obj ',name) ,type) nil))
+
+(mac children (obj)
+  `(,obj 'children))
+
+(mac parents (obj)
+  `(,obj 'parents))
+
+(def set-parents (obj pars)
+  (each p (parents obj)
+    (= (children p) (rem obj (children p))))
+  (= (obj 'parents) pars)
+  (each p pars
+    (push obj (children p)))
+  pars)
+
+(defset parents (object)
+       (w/uniq g
+         (list (list g object)
+               `(parent ,g)
+               `(fn (val) (set-parents object val)))))
+
+(def maphier (f object)
+  (f object)
+  (each c (children object)
+    (maphier f c)))
+
+(def defobj parents
+  (let object (table)
+    (= (parents object) parents)
+    object))
+
+(= mcombine (table))
+
+(mac defcomb (name op)
+  `(do
+     (defprop ,name t)
+     (= (mcombine ',name)
+        ,(case op
+           standard nil
+           do      (fn args (last args))
+                   op))))
+
+(def run-core-methods (object name args (o pri))
+  (let comb (mcombine name)
+    (if comb
+        (if (isa comb 'sym)
+            ((case comb
+               and comb-and
+               or  comb-or)
+             object name args (get-ancestors object))
+            (comb-normal comb object name args))
+        (do1
+          (do
+            (run-befores object name args)
+            (apply (or pri (rget object name 'primary))
+                   object args))
+          (run-afters object name args)))))
+
+;; (def comb-normal (comb object name args)
+;;   (apply comb
+;;          (mappend (fn (a)
+;;                     (withs 
+;;                         (pm   (aif (a name) (it 'primary))
+;;                          val  (if pm (apply pm object args)))
+;;                       (if val (list val))))
+;;                   (get-ancestors object))))
+
+
+(def comb-normal (comb object name args)
+  (apply comb
+         (mappend [aand (_ name)
+                        (it 'primary)
+                        (apply it object args)
+                        (list it)]
+                  (get-ancestors object))))
+
+(def comb-and (object name args ancs (o last t))
+  (if (no ancs)
+      last
+      (aif (aand ((car ancs) name) (it 'primary))
+           (aand (apply it object args)
+                 (comb-and object name args (cdr ancs) it))
+           (comb-and object name args (cdr ancs) last))))
+
+(def comb-or (object name args ancs)
+  (and ancs
+       (let pm (aand ((car ancs) name) (it 'primary))
+         (or (and pm (apply pm object args))
+             (comb-or object name args (cdr ancs))))))

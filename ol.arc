@@ -2551,3 +2551,6 @@
        (let pm (aand ((car ancs) name) (it 'primary))
          (or (and pm (apply pm object args))
              (comb-or object name args (cdr ancs))))))
+
+; dict owl: Any of various birds of prey of the order Strigiformes 
+; that are primarily nocturnal 
